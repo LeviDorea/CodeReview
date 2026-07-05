@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CodeReviewer",
+  title: "PRzator",
   description: "AI-powered GitHub code review dashboard",
 };
 

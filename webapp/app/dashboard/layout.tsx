@@ -83,7 +83,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
               </svg>
             </div>
-            <span className="text-white font-bold tracking-tight">CodeReviewer</span>
+            <span className="text-white font-bold tracking-tight">PRzator</span>
           </div>
         </div>
 

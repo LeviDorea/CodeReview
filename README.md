@@ -1,4 +1,4 @@
-# CodeReviewer
+# PRzator
 
 Bot de **revisão automática de Pull Requests** no GitHub. Quando um PR é aberto ou atualizado, o sistema analisa o código alterado usando IA (LLM), atribui uma nota e publica um comentário no próprio PR com os problemas encontrados, organizados por criticidade.
 
@@ -14,7 +14,7 @@ Bot de **revisão automática de Pull Requests** no GitHub. Quando um PR é aber
 ## Estrutura
 
 - **raiz do repo** — backend NestJS, Prisma, GitHub App, pipeline de análise e scripts operacionais.
-- **`webapp/`** — frontend Next.js do CodeReviewer.
+- **`webapp/`** — frontend Next.js do PRzator.
 
 ## Como funciona (visão geral)
 
@@ -37,7 +37,7 @@ AnalysisService (pipeline)
 CommentService formata Markdown ── GithubService publica o comentário no PR
 ```
 
-Diagrama visual: [CodeReviewer — Fluxo de Análise de PR (FigJam)](https://www.figma.com/board/eSCaywkjIjoce79H3CzSnr)
+Diagrama visual: [PRzator — Fluxo de Análise de PR (FigJam)](https://www.figma.com/board/eSCaywkjIjoce79H3CzSnr)
 
 ## Módulos principais
 

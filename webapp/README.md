@@ -1,6 +1,6 @@
-# CodeReviewer Webapp
+# PRzator Webapp
 
-Frontend Next.js do CodeReviewer.
+Frontend Next.js do PRzator.
 
 ## Objetivo
 
@@ -30,7 +30,7 @@ npm run dev
 
 ## Configuração
 
-O app usa `NEXT_PUBLIC_API_URL` para apontar para o backend do CodeReviewer.
+O app usa `NEXT_PUBLIC_API_URL` para apontar para o backend do PRzator.
 
 Se a variável não estiver definida, o fallback atual é:
 

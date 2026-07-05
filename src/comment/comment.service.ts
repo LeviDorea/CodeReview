@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ReviewIssue } from '../analysis/review-issue.types';
+import { detectLanguageFromFilename } from '../common/utils/file-language.util';
 
 export interface CommentData {
   score: number;
@@ -34,6 +35,19 @@ export class CommentService {
 
     const sections: string[] = [];
 
+    const highCount = scoredIssues.filter((i) => i.criticality === 'high').length;
+    const mediumCount = scoredIssues.filter((i) => i.criticality === 'medium').length;
+    const lowCount = scoredIssues.filter((i) => i.criticality === 'low').length;
+
+    if (scoredIssues.length > 0 || knownDebtIssues.length > 0 || advisoryIssues.length > 0) {
+      sections.push('| 🔴 Alta | 🟡 Média | 🟢 Baixa | 🧱 Known Debt | ℹ️ Observações |');
+      sections.push('|:---:|:---:|:---:|:---:|:---:|');
+      sections.push(
+        `| ${highCount} | ${mediumCount} | ${lowCount} | ${knownDebtIssues.length} | ${advisoryIssues.length} |`,
+      );
+      sections.push('');
+    }
+
     for (const level of ['high', 'medium', 'low'] as const) {
       const levelIssues = scoredIssues.filter((i) => i.criticality === level);
       if (levelIssues.length === 0) continue;
@@ -45,63 +59,32 @@ export class CommentService {
       sections.push('');
 
       for (const issue of levelIssues) {
-        sections.push(`**Arquivo:** \`${issue.file}\``);
-        sections.push(`**Regra:** ${issue.rule}`);
-        if (issue.baselineStatus === 'new') {
-          sections.push('**Status:** Nova neste commit');
-        }
-        if (issue.baselineStatus === 'persistent') {
-          sections.push('**Status:** Persistente');
-        }
-        sections.push(`**Problema:** ${issue.description}`);
-        sections.push(`**Motivo:** ${issue.reason}`);
-        if (issue.snippet) {
-          sections.push('**Trecho:**');
-          sections.push('```');
-          sections.push(issue.snippet);
-          sections.push('```');
-        }
-        sections.push('');
+        const statusSuffix =
+          issue.baselineStatus === 'new'
+            ? ' 🆕'
+            : issue.baselineStatus === 'persistent'
+              ? ' ♻️'
+              : '';
+        sections.push(this.renderIssueDetails(issue, statusSuffix));
       }
     }
 
     if (knownDebtIssues.length > 0) {
-      sections.push(`### 🧱 Known Debt (${knownDebtIssues.length} sem impacto na nota)`);
-      sections.push('');
-
-      for (const issue of knownDebtIssues) {
-        sections.push(`**Arquivo:** \`${issue.file}\``);
-        sections.push(`**Regra:** ${issue.rule}`);
-        sections.push('**Status:** Preexistente / descoberto agora');
-        sections.push(`**Problema:** ${issue.description}`);
-        sections.push(`**Motivo:** ${issue.reason}`);
-        if (issue.snippet) {
-          sections.push('**Trecho:**');
-          sections.push('```');
-          sections.push(issue.snippet);
-          sections.push('```');
-        }
-        sections.push('');
-      }
+      sections.push(
+        this.renderCollapsedSection(
+          `🧱 Known Debt (${knownDebtIssues.length} sem impacto na nota)`,
+          knownDebtIssues,
+        ),
+      );
     }
 
     if (advisoryIssues.length > 0) {
-      sections.push(`### ℹ️ Observações Adicionais (${advisoryIssues.length} sem impacto na nota)`);
-      sections.push('');
-
-      for (const issue of advisoryIssues) {
-        sections.push(`**Arquivo:** \`${issue.file}\``);
-        sections.push(`**Regra:** ${issue.rule}`);
-        sections.push(`**Problema:** ${issue.description}`);
-        sections.push(`**Motivo:** ${issue.reason}`);
-        if (issue.snippet) {
-          sections.push('**Trecho:**');
-          sections.push('```');
-          sections.push(issue.snippet);
-          sections.push('```');
-        }
-        sections.push('');
-      }
+      sections.push(
+        this.renderCollapsedSection(
+          `ℹ️ Observações Adicionais (${advisoryIssues.length} sem impacto na nota)`,
+          advisoryIssues,
+        ),
+      );
     }
 
     const noIssuesMessage =
@@ -112,7 +95,7 @@ export class CommentService {
           : '';
 
     return [
-      `## 🤖 CodeReviewer — Análise Automática`,
+      `## 🤖 PRzator — Análise Automática`,
       '',
       `**Nota: ${score}/100** ${indicator}`,
       '',
@@ -121,13 +104,69 @@ export class CommentService {
       ...sections,
       noIssuesMessage,
       '---',
-      `*Gerado por CodeReviewer Bot em ${new Date().toISOString()}*`,
+      `*Gerado por PRzator Bot em ${this.formatTimestamp(new Date())}*`,
     ].join('\n');
+  }
+
+  private renderIssueDetails(issue: ReviewIssue, statusSuffix = ''): string {
+    const lines: string[] = [];
+    const statusLine =
+      issue.baselineStatus === 'new'
+        ? 'Nova neste commit'
+        : issue.baselineStatus === 'persistent'
+          ? 'Persistente'
+          : issue.baselineStatus === 'known_debt'
+            ? 'Preexistente / descoberto agora'
+            : null;
+
+    lines.push('<details>');
+    lines.push(`<summary><code>${issue.file}</code>${statusSuffix} — ${issue.description}</summary>`);
+    lines.push('');
+    lines.push(`**Regra:** ${issue.rule}`);
+    if (statusLine) {
+      lines.push(`**Status:** ${statusLine}`);
+    }
+    lines.push(`**Motivo:** ${issue.reason}`);
+    if (issue.snippet) {
+      const language = detectLanguageFromFilename(issue.file) ?? '';
+      lines.push('');
+      lines.push('```' + language);
+      lines.push(issue.snippet);
+      lines.push('```');
+    }
+    lines.push('');
+    lines.push('</details>');
+    lines.push('');
+    return lines.join('\n');
+  }
+
+  private renderCollapsedSection(title: string, sectionIssues: ReviewIssue[]): string {
+    const lines: string[] = [];
+    lines.push('<details>');
+    lines.push(`<summary><strong>${title}</strong></summary>`);
+    lines.push('');
+    for (const issue of sectionIssues) {
+      lines.push(this.renderIssueDetails(issue));
+    }
+    lines.push('</details>');
+    lines.push('');
+    return lines.join('\n');
+  }
+
+  private formatTimestamp(date: Date): string {
+    return date.toLocaleString('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   }
 
   formatFailureComment(prNumber: number, error: string): string {
     return [
-      `## 🤖 CodeReviewer — Análise Automática`,
+      `## 🤖 PRzator — Análise Automática`,
       '',
       `> ❌ A análise do PR #${prNumber} falhou.`,
       `> **Erro:** ${error}`,

@@ -74,17 +74,17 @@ interface RuleValidationResult {
 }
 
 const MODE = process.argv[2] ?? 'dry-run';
-const CODEREVIEWER_ROOT = process.cwd();
-const WORKSPACE_ROOT = path.resolve(CODEREVIEWER_ROOT, '..');
+const PRZATOR_ROOT = process.cwd();
+const WORKSPACE_ROOT = path.resolve(PRZATOR_ROOT, '..');
 const APPROVED_RULES_PATH =
   process.env.APPROVED_RULES_PATH ??
-  path.join(WORKSPACE_ROOT, 'codereviewer-approved-rules.json');
+  path.join(WORKSPACE_ROOT, 'przator-approved-rules.json');
 const IMPORT_RULES_PATH =
   process.env.IMPORT_RULES_PATH ??
-  path.join(WORKSPACE_ROOT, 'codereviewer-import-rules.json');
+  path.join(WORKSPACE_ROOT, 'przator-import-rules.json');
 const IMPORT_MANIFEST_PATH =
   process.env.IMPORT_MANIFEST_PATH ??
-  path.join(WORKSPACE_ROOT, 'codereviewer-import-manifest.json');
+  path.join(WORKSPACE_ROOT, 'przator-import-manifest.json');
 const LOCAL_REPOS_ROOT =
   process.env.LOCAL_REPOS_ROOT ?? '/home/elevia/ProjetosElevia';
 
@@ -138,10 +138,8 @@ function prepareRule(rule: ApprovedRule): PreparedRule {
   const expandedFileGlobs = Array.from(
     new Set(normalizedFileGlobs.flatMap((glob) => expandGlobVariants(glob))),
   );
-  const {
-    normalizedTargetLanguage,
-    normalizationNotes,
-  } = normalizeTargetLanguage(rule.targetLanguage ?? null, expandedFileGlobs);
+  const { normalizedTargetLanguage, normalizationNotes } =
+    normalizeTargetLanguage(rule.targetLanguage ?? null, expandedFileGlobs);
 
   const importRule: ImportRuleDto = {
     title: rule.title,
@@ -223,7 +221,10 @@ function inferGlobLanguage(glob: string): string | null {
   const basename = normalizedGlob.split('/').pop() ?? normalizedGlob;
   const basenameLower = basename.toLowerCase();
 
-  if (basenameLower === 'dockerfile' || basenameLower.startsWith('dockerfile.')) {
+  if (
+    basenameLower === 'dockerfile' ||
+    basenameLower.startsWith('dockerfile.')
+  ) {
     return 'dockerfile';
   }
 
@@ -245,10 +246,38 @@ function inferGlobLanguage(glob: string): string | null {
 async function writePreparedArtifacts(manifest: ImportManifest) {
   await mkdir(path.dirname(IMPORT_RULES_PATH), { recursive: true });
 
-  const importRules = manifest.rules.map((rule) => rule.importRule);
+  const importRules = dedupeImportRules(
+    manifest.rules.map((rule) => rule.importRule),
+  );
 
   await writeJson(IMPORT_RULES_PATH, importRules);
   await writeJson(IMPORT_MANIFEST_PATH, manifest);
+}
+
+function dedupeImportRules(importRules: ImportRuleDto[]): ImportRuleDto[] {
+  const seen = new Set<string>();
+  const deduped: ImportRuleDto[] = [];
+
+  for (const rule of importRules) {
+    const key = JSON.stringify({
+      title: rule.title,
+      description: rule.description,
+      criticality: rule.criticality,
+      fileGlobs: Array.from(
+        new Set(rule.fileGlobs.map((glob) => normalizePath(glob))),
+      ),
+      targetLanguage: rule.targetLanguage ?? null,
+    });
+
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    deduped.push(rule);
+  }
+
+  return deduped;
 }
 
 async function runDryRun(manifest: ImportManifest) {
@@ -561,7 +590,8 @@ function sameImportPayload(
     existingRule.title === importRule.title &&
     existingRule.description === importRule.description &&
     existingRule.criticality === importRule.criticality &&
-    (existingRule.targetLanguage ?? null) === (importRule.targetLanguage ?? null) &&
+    (existingRule.targetLanguage ?? null) ===
+      (importRule.targetLanguage ?? null) &&
     JSON.stringify(existingFileGlobs) === JSON.stringify(importFileGlobs)
   );
 }

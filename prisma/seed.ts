@@ -24,24 +24,6 @@ const DEFAULT_RULES = [
     isDefault: true,
   },
   {
-    title: 'Business Logic Outside Model Layer',
-    description:
-      'A conditional, calculation, or status transition that belongs to the domain was added inside a controller, ' +
-      'route handler, or view instead of a model or service. ' +
-      'Controllers should orchestrate request/response flow and delegate domain decisions. ' +
-      'Report this issue, cite the rule, and state which model or service should own the logic.',
-    criticality: Criticality.high,
-    isDefault: true,
-    fileGlobs: [
-      'app/Controller/**/*.php',
-      'src/Controller/**/*.php',
-      'app/Http/Controllers/**/*.php',
-      '**/routes/**/*.php',
-      'src/**/*controller*',
-      'src/**/*Controller*',
-    ],
-  },
-  {
     title: 'Duplicated Database Query',
     description:
       'A database query was added that duplicates an existing model method or performs the same lookup already ' +
@@ -49,11 +31,7 @@ const DEFAULT_RULES = [
       'Report only when the duplication is visible within the diff or its immediate context.',
     criticality: Criticality.medium,
     isDefault: true,
-    fileGlobs: [
-      '**/*.php',
-      '**/*.py',
-      '**/*.ts',
-    ],
+    fileGlobs: ['**/*.php', '**/*.py', '**/*.ts'],
   },
   {
     title: 'N+1 Query Pattern',
@@ -63,77 +41,19 @@ const DEFAULT_RULES = [
       'Good: `await db.findMany({ where: { id: { in: ids } } })`.',
     criticality: Criticality.medium,
     isDefault: true,
-    fileGlobs: [
-      '**/*.php',
-      '**/*.py',
-      '**/*.ts',
-    ],
+    fileGlobs: ['**/*.php', '**/*.py', '**/*.ts'],
   },
   {
-    title: 'CakePHP 2 File/Class Naming Mismatch',
+    title: 'Magic Number Without Named Constant',
     description:
-      'In CakePHP 2, the filename must exactly match the class name including case. A mismatch causes silent load failures. ' +
-      'Bad: file `emailSender.php` containing `class EmailSender`. ' +
-      'Good: file `EmailSender.php` containing `class EmailSender`.',
-    criticality: Criticality.high,
+      'A literal number or string with unclear business meaning (a status code, threshold, limit, or identifier) was ' +
+      'introduced directly in a conditional or calculation instead of being extracted into a named constant. ' +
+      'Report only when the literal is genuinely unclear in context, not for obvious values like 0, 1, or -1 used as ' +
+      'counters or array indices. ' +
+      'Bad: `if (status === 3) { ... }`. Good: `if (status === Status.APPROVED) { ... }`.',
+    criticality: Criticality.medium,
     isDefault: true,
-    fileGlobs: [
-      'app/Controller/**/*.php',
-      'app/Model/**/*.php',
-      'app/Lib/**/*.php',
-      'app/Controller/Component/**/*.php',
-    ],
-  },
-  {
-    title: 'CakePHP 2 Undeclared $uses or $components',
-    description:
-      'A Model or Component is used inside a CakePHP 2 controller without being declared in $uses or $components. ' +
-      'This causes a fatal error at runtime. ' +
-      'Bad: calling `$this->Payment->save()` without `public $uses = ["Payment"]`. ' +
-      'Good: declare every Model in `$uses` and every Component in `$components` before using them.',
-    criticality: Criticality.high,
-    isDefault: true,
-    fileGlobs: [
-      'app/Controller/**/*.php',
-    ],
-  },
-  {
-    title: 'Mautic array_filter Prohibition',
-    description:
-      'array_filter() must never be used on Mautic contact payloads. It silently removes falsy values (0, false, "") ' +
-      'from the payload, causing fields to be unset on the contact instead of updated. ' +
-      'Remove any array_filter() call that wraps or processes data sent to Mautic.',
-    criticality: Criticality.high,
-    isDefault: true,
-    fileGlobs: [
-      '**/*.php',
-    ],
-  },
-  {
-    title: 'planos.valor Must Store Monthly Equivalent Only',
-    description:
-      'The planos.valor column stores only the monthly equivalent value, never the total for the billing cycle. ' +
-      'Any code that writes a quarterly, semi-annual, or annual total directly to planos.valor is incorrect. ' +
-      'Convert to the monthly equivalent before persisting.',
-    criticality: Criticality.high,
-    isDefault: true,
-    fileGlobs: [
-      '**/*.php',
-      '**/*.py',
-    ],
-  },
-  {
-    title: 'planos Table Requires Raw SQL for ALTER',
-    description:
-      'The planos table contains legacy zero-date values that cause Phinx schema builder methods to fail silently or error. ' +
-      'Any migration that alters the planos table must use raw SQL via $this->execute() instead of Phinx builder methods ' +
-      'such as changeColumn() or addColumn().',
-    criticality: Criticality.high,
-    isDefault: true,
-    fileGlobs: [
-      '**/migrations/**/*.php',
-      '**/Migrations/**/*.php',
-    ],
+    fileGlobs: ['**/*.php', '**/*.py', '**/*.ts'],
   },
 ];
 

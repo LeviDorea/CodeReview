@@ -48,7 +48,7 @@ export default function LoginPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
                 </svg>
               </div>
-              <span className="font-bold text-slate-900 text-xl tracking-tight">CodeReviewer</span>
+              <span className="font-bold text-slate-900 text-xl tracking-tight">PRzator</span>
             </div>
             <h1 className="text-lg font-semibold text-slate-900">Sign in to your dashboard</h1>
             <p className="text-slate-500 text-sm mt-1">Enter your API credentials to continue</p>
