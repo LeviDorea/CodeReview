@@ -16,6 +16,11 @@ enum Criticality {
   high
 }
 
+enum RuleScope {
+  file
+  pr
+}
+
 model Repository {
   id             String           @id @default(cuid())
   githubId       Int              @unique
@@ -34,8 +39,11 @@ model Rule {
   title          String
   description    String
   criticality    Criticality
+  scope          RuleScope        @default(file)
   fileGlobs      String[]         @default([])
   targetLanguage String?
+  whyThisRuleExists String?
+  localEvidence  String[]         @default([])
   isDefault      Boolean          @default(false)
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt

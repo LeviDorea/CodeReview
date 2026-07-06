@@ -11,6 +11,7 @@ import {
 } from '../src/common/utils/file-language.util';
 
 type Criticality = 'low' | 'medium' | 'high';
+type RuleScope = 'file' | 'pr';
 type ReviewStatus = 'approved' | 'approved_with_adjustment';
 
 interface ApprovedRule {
@@ -21,6 +22,9 @@ interface ApprovedRule {
   criticality: Criticality;
   fileGlobs: string[];
   targetLanguage?: string | null;
+  scope?: RuleScope;
+  whyThisRuleExists?: string;
+  localEvidence?: string[];
   reviewStatus: ReviewStatus;
   adjustmentNotes?: string;
   classification?: string;
@@ -40,6 +44,9 @@ interface ImportRuleDto {
   criticality: Criticality;
   fileGlobs: string[];
   targetLanguage?: string;
+  scope: RuleScope;
+  whyThisRuleExists?: string;
+  localEvidence: string[];
 }
 
 interface PreparedRule {
@@ -146,6 +153,11 @@ function prepareRule(rule: ApprovedRule): PreparedRule {
     description: rule.description,
     criticality: rule.criticality,
     fileGlobs: expandedFileGlobs,
+    scope: inferRuleScope(rule),
+    whyThisRuleExists: rule.whyThisRuleExists,
+    localEvidence: Array.from(
+      new Set((rule.localEvidence ?? []).map((filePath) => normalizePath(filePath))),
+    ),
     ...(normalizedTargetLanguage
       ? { targetLanguage: normalizedTargetLanguage }
       : {}),
@@ -163,6 +175,23 @@ function prepareRule(rule: ApprovedRule): PreparedRule {
     normalizationNotes,
     importRule,
   };
+}
+
+function inferRuleScope(rule: ApprovedRule): RuleScope {
+  if (rule.scope) {
+    return rule.scope;
+  }
+
+  const title = rule.title.toLowerCase();
+  const description = rule.description.toLowerCase();
+  if (
+    /(test|coverage)/.test(title) &&
+    /without (adding|updating)/.test(description)
+  ) {
+    return 'pr';
+  }
+
+  return 'file';
 }
 
 function normalizeTargetLanguage(
@@ -267,6 +296,11 @@ function dedupeImportRules(importRules: ImportRuleDto[]): ImportRuleDto[] {
         new Set(rule.fileGlobs.map((glob) => normalizePath(glob))),
       ),
       targetLanguage: rule.targetLanguage ?? null,
+      scope: rule.scope,
+      whyThisRuleExists: rule.whyThisRuleExists ?? null,
+      localEvidence: Array.from(
+        new Set(rule.localEvidence.map((filePath) => normalizePath(filePath))),
+      ),
     });
 
     if (seen.has(key)) {
@@ -532,6 +566,9 @@ async function importPreparedRules(
             criticality: rule.importRule.criticality,
             fileGlobs: rule.importRule.fileGlobs,
             targetLanguage: rule.importRule.targetLanguage ?? null,
+            scope: rule.importRule.scope,
+            whyThisRuleExists: rule.importRule.whyThisRuleExists ?? null,
+            localEvidence: rule.importRule.localEvidence,
           },
         }));
 
@@ -576,6 +613,9 @@ function sameImportPayload(
     criticality: Criticality;
     fileGlobs: string[];
     targetLanguage: string | null;
+    scope: RuleScope;
+    whyThisRuleExists: string | null;
+    localEvidence: string[];
   },
   importRule: ImportRuleDto,
 ): boolean {
@@ -590,8 +630,25 @@ function sameImportPayload(
     existingRule.title === importRule.title &&
     existingRule.description === importRule.description &&
     existingRule.criticality === importRule.criticality &&
+    existingRule.scope === importRule.scope &&
     (existingRule.targetLanguage ?? null) ===
       (importRule.targetLanguage ?? null) &&
+    (existingRule.whyThisRuleExists ?? null) ===
+      (importRule.whyThisRuleExists ?? null) &&
+    JSON.stringify(
+      Array.from(
+        new Set(
+          existingRule.localEvidence.map((filePath) => normalizePath(filePath)),
+        ),
+      ),
+    ) ===
+      JSON.stringify(
+        Array.from(
+          new Set(
+            importRule.localEvidence.map((filePath) => normalizePath(filePath)),
+          ),
+        ),
+      ) &&
     JSON.stringify(existingFileGlobs) === JSON.stringify(importFileGlobs)
   );
 }

@@ -6,8 +6,11 @@ const DEFAULT_RULE = {
   title: 'Security',
   description: 'Check secrets',
   criticality: 'high',
+  scope: 'file',
   fileGlobs: [],
   targetLanguage: null,
+  whyThisRuleExists: null,
+  localEvidence: [],
   isDefault: true,
 };
 const CUSTOM_RULE = {
@@ -15,8 +18,11 @@ const CUSTOM_RULE = {
   title: 'Custom',
   description: 'Custom review rule',
   criticality: 'medium',
+  scope: 'file',
   fileGlobs: [],
   targetLanguage: null,
+  whyThisRuleExists: null,
+  localEvidence: [],
   isDefault: false,
 };
 
@@ -139,40 +145,56 @@ describe('RulesService', () => {
         { filename: 'scripts/job/run.py' },
       ]);
 
-      expect(result).toEqual([
-        {
-          filename: 'src/app/service.ts',
-          language: 'typescript',
-          rules: [
-            {
-              title: 'All files',
-              description: 'Check secrets',
-              criticality: 'high',
-            },
-            {
-              title: 'TypeScript only',
-              description: 'Custom review rule',
-              criticality: 'medium',
-            },
-          ],
-        },
-        {
-          filename: 'scripts/job/run.py',
-          language: 'python',
-          rules: [
-            {
-              title: 'All files',
-              description: 'Check secrets',
-              criticality: 'high',
-            },
-            {
-              title: 'Python only',
-              description: 'Custom review rule',
-              criticality: 'medium',
-            },
-          ],
-        },
-      ]);
+      expect(result).toEqual({
+        files: [
+          {
+            filename: 'src/app/service.ts',
+            language: 'typescript',
+            rules: [
+              {
+                title: 'All files',
+                description: 'Check secrets',
+                criticality: 'high',
+                scope: 'file',
+                whyThisRuleExists: null,
+                localEvidence: [],
+              },
+              {
+                title: 'TypeScript only',
+                description: 'Custom review rule',
+                criticality: 'medium',
+                scope: 'file',
+                whyThisRuleExists: null,
+                localEvidence: [],
+              },
+            ],
+          },
+          {
+            filename: 'scripts/job/run.py',
+            language: 'python',
+            rules: [
+              {
+                title: 'All files',
+                description: 'Check secrets',
+                criticality: 'high',
+                scope: 'file',
+                whyThisRuleExists: null,
+                localEvidence: [],
+              },
+              {
+                title: 'Python only',
+                description: 'Custom review rule',
+                criticality: 'medium',
+                scope: 'file',
+                whyThisRuleExists: null,
+                localEvidence: [],
+              },
+            ],
+          },
+        ],
+        prRules: [],
+        contextPaths: [],
+      });
     });
 
     it('should exclude rules whose glob or language does not match the file', async () => {
@@ -202,8 +224,8 @@ describe('RulesService', () => {
         { filename: 'src/main.ts' },
       ]);
 
-      expect(result).toHaveLength(1);
-      expect(result[0]).toEqual({
+      expect(result.files).toHaveLength(1);
+      expect(result.files[0]).toEqual({
         filename: 'src/main.ts',
         language: 'typescript',
         rules: [
@@ -211,9 +233,14 @@ describe('RulesService', () => {
             title: 'Security',
             description: 'Check secrets',
             criticality: 'high',
+            scope: 'file',
+            whyThisRuleExists: null,
+            localEvidence: [],
           },
         ],
       });
+      expect(result.prRules).toEqual([]);
+      expect(result.contextPaths).toEqual([]);
     });
 
     it('should match php-prefixed CakePHP paths against app-based globs', async () => {
@@ -235,19 +262,26 @@ describe('RulesService', () => {
         { filename: 'php/app/Controller/PedidosController.php' },
       ]);
 
-      expect(result).toEqual([
-        {
-          filename: 'php/app/Controller/PedidosController.php',
-          language: 'php',
-          rules: [
-            {
-              title: 'Cake controller architecture',
-              description: 'Business logic should stay out of controllers',
-              criticality: 'high',
-            },
-          ],
-        },
-      ]);
+      expect(result).toEqual({
+        files: [
+          {
+            filename: 'php/app/Controller/PedidosController.php',
+            language: 'php',
+            rules: [
+              {
+                title: 'Cake controller architecture',
+                description: 'Business logic should stay out of controllers',
+                criticality: 'high',
+                scope: 'file',
+                whyThisRuleExists: null,
+                localEvidence: [],
+              },
+            ],
+          },
+        ],
+        prRules: [],
+        contextPaths: [],
+      });
     });
 
     it('should allow mixed and configuration rules when the file glob matches', async () => {
@@ -280,41 +314,54 @@ describe('RulesService', () => {
         { filename: '.env.example' },
       ]);
 
-      expect(result).toEqual([
-        {
-          filename: 'Dockerfile',
-          language: 'dockerfile',
-          rules: [
-            {
-              title: 'Mixed infra rule',
-              description: 'Validate mixed language config files',
-              criticality: 'high',
-            },
-          ],
-        },
-        {
-          filename: 'next.config.ts',
-          language: 'typescript',
-          rules: [
-            {
-              title: 'Configuration contract',
-              description: 'Validate config entrypoints',
-              criticality: 'high',
-            },
-          ],
-        },
-        {
-          filename: '.env.example',
-          language: 'env',
-          rules: [
-            {
-              title: 'Configuration contract',
-              description: 'Validate config entrypoints',
-              criticality: 'high',
-            },
-          ],
-        },
-      ]);
+      expect(result).toEqual({
+        files: [
+          {
+            filename: 'Dockerfile',
+            language: 'dockerfile',
+            rules: [
+              {
+                title: 'Mixed infra rule',
+                description: 'Validate mixed language config files',
+                criticality: 'high',
+                scope: 'file',
+                whyThisRuleExists: null,
+                localEvidence: [],
+              },
+            ],
+          },
+          {
+            filename: 'next.config.ts',
+            language: 'typescript',
+            rules: [
+              {
+                title: 'Configuration contract',
+                description: 'Validate config entrypoints',
+                criticality: 'high',
+                scope: 'file',
+                whyThisRuleExists: null,
+                localEvidence: [],
+              },
+            ],
+          },
+          {
+            filename: '.env.example',
+            language: 'env',
+            rules: [
+              {
+                title: 'Configuration contract',
+                description: 'Validate config entrypoints',
+                criticality: 'high',
+                scope: 'file',
+                whyThisRuleExists: null,
+                localEvidence: [],
+              },
+            ],
+          },
+        ],
+        prRules: [],
+        contextPaths: [],
+      });
     });
 
     it('should support brace-expanded file globs', async () => {
@@ -337,18 +384,82 @@ describe('RulesService', () => {
         { filename: 'app/page.tsx' },
       ]);
 
-      expect(result).toEqual([
+      expect(result).toEqual({
+        files: [
+          {
+            filename: 'app/page.tsx',
+            language: 'typescript',
+            rules: [
+              {
+                title: 'TS or TSX',
+                description: 'Matches both ts and tsx files',
+                criticality: 'high',
+                scope: 'file',
+                whyThisRuleExists: null,
+                localEvidence: [],
+              },
+            ],
+          },
+        ],
+        prRules: [],
+        contextPaths: [],
+      });
+    });
+
+    it('should group PR-scoped rules once and expose their context files', async () => {
+      mockPrisma.rule.findMany
+        .mockResolvedValueOnce([
+          {
+            ...DEFAULT_RULE,
+            id: 'pr-rule',
+            title: 'Controller changes need tests',
+            description: 'Behavior changes without updated tests must be flagged.',
+            scope: 'pr',
+            fileGlobs: ['php/app/Controller/**/*.php'],
+            whyThisRuleExists: 'This repo expects controller changes to ship with tests.',
+            localEvidence: [
+              'AGENTS.md',
+              'php/app/Test/Case/Controller/PedidosControllerTest.php',
+            ],
+          },
+        ])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+
+      const svc = makeService();
+      const result = await svc.getActiveRulesForRepo('repo-pr', [
+        { filename: 'php/app/Controller/PedidosController.php' },
+        { filename: 'php/app/Test/Case/Controller/PedidosControllerTest.php' },
+      ]);
+
+      expect(result.files).toEqual([
         {
-          filename: 'app/page.tsx',
-          language: 'typescript',
-          rules: [
-            {
-              title: 'TS or TSX',
-              description: 'Matches both ts and tsx files',
-              criticality: 'high',
-            },
+          filename: 'php/app/Controller/PedidosController.php',
+          language: 'php',
+          rules: [],
+        },
+        {
+          filename: 'php/app/Test/Case/Controller/PedidosControllerTest.php',
+          language: 'php',
+          rules: [],
+        },
+      ]);
+      expect(result.prRules).toEqual([
+        {
+          title: 'Controller changes need tests',
+          description: 'Behavior changes without updated tests must be flagged.',
+          criticality: 'high',
+          scope: 'pr',
+          whyThisRuleExists: 'This repo expects controller changes to ship with tests.',
+          localEvidence: [
+            'AGENTS.md',
+            'php/app/Test/Case/Controller/PedidosControllerTest.php',
           ],
         },
+      ]);
+      expect(result.contextPaths).toEqual([
+        'AGENTS.md',
+        'php/app/Test/Case/Controller/PedidosControllerTest.php',
       ]);
     });
   });

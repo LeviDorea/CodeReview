@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Rule } from '@prisma/client';
+import { Rule, RuleScope } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRuleDto } from './dto/create-rule.dto';
 import { UpdateRuleDto } from './dto/update-rule.dto';
@@ -18,12 +18,21 @@ export interface RulePromptContext {
   title: string;
   description: string;
   criticality: 'low' | 'medium' | 'high';
+  scope?: RuleScope;
+  whyThisRuleExists?: string | null;
+  localEvidence?: string[];
 }
 
 export interface FileRulesContext {
   filename: string;
   language: string | null;
   rules: RulePromptContext[];
+}
+
+export interface ActiveRulesContext {
+  files: FileRulesContext[];
+  prRules: RulePromptContext[];
+  contextPaths: string[];
 }
 
 @Injectable()
@@ -78,19 +87,21 @@ export class RulesService {
   async getActiveRulesForRepo(
     repositoryId: string,
     changedFiles: Array<{ filename: string }>,
-  ): Promise<FileRulesContext[]> {
+  ): Promise<ActiveRulesContext> {
     const activeRules = await this.listActiveRulesForRepo(repositoryId);
+    const matchedRules = activeRules.filter((rule) =>
+      changedFiles.some((file) => this.ruleMatchesFile(rule, file.filename)),
+    );
+    const prRules = matchedRules
+      .filter((rule) => rule.scope === RuleScope.pr)
+      .map((rule) => this.toPromptContext(rule));
 
-    return changedFiles.map((file) => {
+    const files = changedFiles.map((file) => {
       const language = detectLanguageFromFilename(file.filename);
       const rules = activeRules
-        .filter((rule) => this.matchesFile(rule, file.filename))
-        .filter((rule) => this.matchesLanguage(rule.targetLanguage, language))
-        .map((rule) => ({
-          title: rule.title,
-          description: rule.description,
-          criticality: rule.criticality,
-        }));
+        .filter((rule) => rule.scope !== RuleScope.pr)
+        .filter((rule) => this.ruleMatchesFile(rule, file.filename))
+        .map((rule) => this.toPromptContext(rule));
 
       return {
         filename: file.filename,
@@ -98,6 +109,21 @@ export class RulesService {
         rules,
       };
     });
+
+    const contextPaths = Array.from(
+      new Set(
+        [...files.flatMap((file) => file.rules), ...prRules]
+          .flatMap((rule) => rule.localEvidence ?? [])
+          .map((path) => normalizePath(path))
+          .filter(Boolean),
+      ),
+    );
+
+    return {
+      files,
+      prRules,
+      contextPaths,
+    };
   }
 
   private async listActiveRulesForRepo(repositoryId: string) {
@@ -116,6 +142,19 @@ export class RulesService {
       ]);
 
     return [...defaultRules, ...globalCustomRules, ...repoSpecificRules];
+  }
+
+  private ruleMatchesFile(
+    rule: Pick<Rule, 'fileGlobs' | 'targetLanguage'>,
+    filename: string,
+  ): boolean {
+    const detectedLanguage = detectLanguageFromFilename(filename);
+
+    if (!this.matchesFile(rule, filename)) {
+      return false;
+    }
+
+    return this.matchesLanguage(rule.targetLanguage, detectedLanguage);
   }
 
   private matchesFile(rule: Pick<Rule, 'fileGlobs'>, filename: string): boolean {
@@ -197,6 +236,22 @@ export class RulesService {
     }
 
     return Array.from(candidates);
+  }
+
+  private toPromptContext(
+    rule: Pick<
+      Rule,
+      'title' | 'description' | 'criticality' | 'scope' | 'whyThisRuleExists' | 'localEvidence'
+    >,
+  ): RulePromptContext {
+    return {
+      title: rule.title,
+      description: rule.description,
+      criticality: rule.criticality,
+      scope: rule.scope,
+      whyThisRuleExists: rule.whyThisRuleExists ?? null,
+      localEvidence: rule.localEvidence ?? [],
+    };
   }
 
   private async findOrThrow(id: string) {

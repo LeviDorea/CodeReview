@@ -5,7 +5,7 @@ import {
   IsString,
   MinLength,
 } from 'class-validator';
-import { Criticality } from '@prisma/client';
+import { Criticality, RuleScope } from '@prisma/client';
 
 export class CreateRuleDto {
   @IsString()
@@ -19,6 +19,10 @@ export class CreateRuleDto {
   @IsEnum(Criticality)
   criticality: Criticality;
 
+  @IsEnum(RuleScope)
+  @IsOptional()
+  scope?: RuleScope;
+
   @IsArray()
   @IsString({ each: true })
   @IsOptional()
@@ -27,4 +31,13 @@ export class CreateRuleDto {
   @IsString()
   @IsOptional()
   targetLanguage?: string;
+
+  @IsString()
+  @IsOptional()
+  whyThisRuleExists?: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  localEvidence?: string[];
 }
