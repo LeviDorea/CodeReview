@@ -52,16 +52,17 @@ model RuleRepository {
 }
 
 model Analysis {
-  id           String     @id @default(cuid())
-  repositoryId String
-  prNumber     Int
-  prTitle      String
-  commitSha    String
-  score        Int
-  issues       Json
-  published    Boolean    @default(false)
-  createdAt    DateTime   @default(now())
-  repository   Repository @relation(fields: [repositoryId], references: [id])
+  id            String     @id @default(cuid())
+  repositoryId  String
+  prNumber      Int
+  prTitle       String
+  commitSha     String
+  score         Int
+  issues        Json
+  generalIssues Json?
+  published     Boolean    @default(false)
+  createdAt     DateTime   @default(now())
+  repository    Repository @relation(fields: [repositoryId], references: [id])
 
   @@unique([repositoryId, prNumber, commitSha])
 }

@@ -28,14 +28,13 @@ export class RepositoriesService {
       throw new ConflictException('Repository already registered');
     }
 
-    const webhookId = await this.github.registerWebhook(
-      dto.owner,
-      dto.name,
-      dto.installationId,
-    );
-
+    // No per-repo webhook is created here on purpose: the GitHub App's own
+    // central webhook already delivers pull_request events for every
+    // installed repository. Creating one here as well used to cause every
+    // PR event to be delivered twice, racing two full analysis pipelines
+    // against the same commit.
     return this.prisma.repository.create({
-      data: { ...dto, webhookId },
+      data: { ...dto, webhookId: null },
     });
   }
 

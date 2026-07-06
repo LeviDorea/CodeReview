@@ -5,14 +5,23 @@ import { z } from 'zod';
 import { withRetry } from '../common/utils/retry.util';
 import { DiffFile, DiffService } from './diff.service';
 import { FileRulesContext } from '../rules/rules.service';
-import { ReviewIssue } from './review-issue.types';
-import { buildIssueKey, issueMatchesDiff } from './review-issue.util';
+import { GeneralIssue, ReviewIssue } from './review-issue.types';
+import { buildIssueKey, buildGeneralIssueKey, issueMatchesDiff } from './review-issue.util';
 
 const IssueSchema = z.object({
   file: z.string(),
   snippet: z.string(),
-  description: z.string(),
-  reason: z.string(),
+  description: z
+    .string()
+    .describe(
+      'What the problem is, in general terms (can restate the rule in your own words).',
+    ),
+  reason: z
+    .string()
+    .describe(
+      'Why THIS specific occurrence violates the rule, referencing the actual code in the snippet. ' +
+        'Must not just repeat the rule title or description.',
+    ),
   criticality: z.enum(['low', 'medium', 'high']),
   rule: z.string(),
 });
@@ -21,7 +30,24 @@ const LlmOutputSchema = z.object({
   issues: z.array(IssueSchema),
 });
 
+const GeneralIssueSchema = z.object({
+  file: z.string(),
+  snippet: z.string(),
+  description: z.string(),
+  reason: z.string(),
+  criticality: z.enum(['low', 'medium', 'high']),
+});
+
+const GeneralDiscoveryOutputSchema = z.object({
+  issues: z.array(GeneralIssueSchema),
+});
+
+const GeneralVerifyOutputSchema = z.object({
+  stillPresentIssueKeys: z.array(z.string()),
+});
+
 type LlmIssue = z.infer<typeof IssueSchema>;
+type LlmGeneralIssue = z.infer<typeof GeneralIssueSchema>;
 const DEFAULT_MAX_DIFF_TOKENS = 12000;
 
 @Injectable()
@@ -51,7 +77,6 @@ export class LlmService {
     files: DiffFile[],
     sharedContext: string,
     rulesByFile: FileRulesContext[],
-    agentContext?: string,
   ): Promise<ReviewIssue[]> {
     const rulesLookup = new Map(rulesByFile.map((entry) => [entry.filename, entry]));
     const filesWithRules = files.filter((file) => {
@@ -73,12 +98,273 @@ export class LlmService {
         batch.files,
         sharedContext,
         rulesByFile,
-        agentContext,
       );
       allIssues.push(...issues);
     }
 
     return this.consolidateIssues(allIssues, files);
+  }
+
+  async analyzeGeneral(
+    prTitle: string,
+    prBody: string,
+    files: DiffFile[],
+    agentsMdContent: string | undefined,
+    previousIssues: GeneralIssue[],
+  ): Promise<GeneralIssue[]> {
+    if (files.length === 0) {
+      return [];
+    }
+
+    if (previousIssues.length === 0) {
+      return this.discoverGeneralIssues(prTitle, prBody, files, agentsMdContent);
+    }
+
+    return this.verifyGeneralIssues(files, previousIssues);
+  }
+
+  private async discoverGeneralIssues(
+    prTitle: string,
+    prBody: string,
+    files: DiffFile[],
+    agentsMdContent: string | undefined,
+  ): Promise<GeneralIssue[]> {
+    const batches = this.diffService.splitIntoBatches(files, this.maxTokens);
+    const allIssues: LlmGeneralIssue[] = [];
+
+    for (const batch of batches) {
+      allIssues.push(
+        ...(await this.discoverGeneralBatchWithFallback(
+          prTitle,
+          prBody,
+          batch.files,
+          agentsMdContent,
+        )),
+      );
+    }
+
+    const diffFiltered = allIssues.filter((issue) => issueMatchesDiff(issue, files));
+    const deduped = this.deduplicateGeneralIssues(diffFiltered);
+    return this.applyGeneralIssueCaps(deduped);
+  }
+
+  private async discoverGeneralBatchWithFallback(
+    prTitle: string,
+    prBody: string,
+    files: DiffFile[],
+    agentsMdContent: string | undefined,
+  ): Promise<LlmGeneralIssue[]> {
+    try {
+      return await this.discoverGeneralBatch(prTitle, prBody, files, agentsMdContent);
+    } catch (err) {
+      if (!this.isPromptTooLargeError(err)) {
+        throw err;
+      }
+
+      if (agentsMdContent) {
+        this.logger.warn(
+          `General-analysis prompt too large for ${files.length} file(s); retrying without AGENTS.md context`,
+        );
+        return this.discoverGeneralBatchWithFallback(prTitle, prBody, files, undefined);
+      }
+
+      const splitBatches = this.splitOversizedBatch(files);
+      if (splitBatches.length > 1) {
+        this.logger.warn(
+          `General-analysis prompt still too large; splitting batch into ${splitBatches.length} smaller chunk(s)`,
+        );
+
+        const issues: LlmGeneralIssue[] = [];
+        for (const splitBatch of splitBatches) {
+          issues.push(
+            ...(await this.discoverGeneralBatchWithFallback(
+              prTitle,
+              prBody,
+              splitBatch,
+              undefined,
+            )),
+          );
+        }
+        return issues;
+      }
+
+      this.logger.error(
+        `General-analysis prompt is still too large for ${files[0]?.filename ?? 'unknown file'} even after fallback splitting`,
+      );
+      throw err;
+    }
+  }
+
+  private async discoverGeneralBatch(
+    prTitle: string,
+    prBody: string,
+    files: DiffFile[],
+    agentsMdContent: string | undefined,
+  ): Promise<LlmGeneralIssue[]> {
+    const diff = this.formatDiffPlain(files);
+    const prompt = this.buildGeneralDiscoveryPrompt(prTitle, prBody, diff, agentsMdContent);
+    const structuredModel = this.model.withStructuredOutput(GeneralDiscoveryOutputSchema);
+
+    const retryOn = (err: unknown): boolean => {
+      if (this.isPromptTooLargeError(err)) {
+        return false;
+      }
+
+      const status = (err as any)?.status ?? (err as any)?.response?.status;
+      return status === 429 || status >= 500;
+    };
+
+    const result = await withRetry<{ issues: LlmGeneralIssue[] }>(
+      () => structuredModel.invoke(prompt) as Promise<{ issues: LlmGeneralIssue[] }>,
+      {
+        maxAttempts: 3,
+        delays: [2000, 4000, 8000],
+        retryOn,
+        onFinalFailure: async (err) => {
+          if (this.isPromptTooLargeError(err)) {
+            return;
+          }
+          this.logger.error(`General-analysis discovery failed after all retries: ${String(err)}`);
+        },
+      },
+    );
+
+    return result.issues;
+  }
+
+  private async verifyGeneralIssues(
+    files: DiffFile[],
+    previousIssues: GeneralIssue[],
+  ): Promise<GeneralIssue[]> {
+    const relevantFiles = files.filter((file) =>
+      previousIssues.some((issue) => issue.file === file.filename),
+    );
+
+    if (relevantFiles.length === 0) {
+      return [];
+    }
+
+    const diff = this.formatDiffPlain(relevantFiles);
+    const prompt = this.buildGeneralVerifyPrompt(diff, previousIssues);
+    const structuredModel = this.model.withStructuredOutput(GeneralVerifyOutputSchema);
+
+    const result = await withRetry<{ stillPresentIssueKeys: string[] }>(
+      () => structuredModel.invoke(prompt) as Promise<{ stillPresentIssueKeys: string[] }>,
+      {
+        maxAttempts: 3,
+        delays: [2000, 4000, 8000],
+        retryOn: (err) => {
+          if (this.isPromptTooLargeError(err)) {
+            return false;
+          }
+          const status = (err as any)?.status ?? (err as any)?.response?.status;
+          return status === 429 || status >= 500;
+        },
+        onFinalFailure: async (err) => {
+          if (this.isPromptTooLargeError(err)) {
+            return;
+          }
+          this.logger.error(`General-analysis verification failed after all retries: ${String(err)}`);
+        },
+      },
+    );
+
+    const stillPresentKeys = new Set(result.stillPresentIssueKeys);
+    return previousIssues.filter((issue) => stillPresentKeys.has(issue.issueKey));
+  }
+
+  private buildGeneralDiscoveryPrompt(
+    prTitle: string,
+    prBody: string,
+    diff: string,
+    agentsMdContent: string | undefined,
+  ): string {
+    return `You are an experienced software engineer doing a general-purpose code review of this Pull Request, similar to what GitHub Copilot's automated review does. Unlike a rule-checklist review, you are free to use your own judgement about real bugs, correctness issues, and robustness problems.
+
+## Core Constraints
+- Only report real, concrete problems: bugs, correctness issues, missing null/undefined/edge-case handling, logic errors, broken assumptions. Do not report pure style preferences or subjective taste.
+- A review with zero issues is correct and expected. Do not force findings.
+- Every issue must point to a line that exists in the diff hunks below. Do not reference lines outside the diff.
+- If the diff is clean, return an empty issues array.
+- Use the repository context (AGENTS.md) below, if present, to understand conventions and avoid flagging intentional patterns.
+
+## Pull Request
+Title: ${prTitle}
+Description: ${prBody || '(none)'}
+
+## Files Changed
+${diff}
+
+${agentsMdContent ? `## Repository Context (AGENTS.md)\n${agentsMdContent}\n` : ''}
+Report only real issues. If nothing is wrong, return { "issues": [] }.`;
+  }
+
+  private buildGeneralVerifyPrompt(diff: string, previousIssues: GeneralIssue[]): string {
+    const issuesList = previousIssues
+      .map(
+        (issue) =>
+          `- issueKey: ${issue.issueKey}\n  file: ${issue.file}\n  description: ${issue.description}\n  snippet: ${issue.snippet}`,
+      )
+      .join('\n');
+
+    return `You previously found the following general code-review issues on this Pull Request. Your only job now is to check, against the current state of the diff below, which of these issues are STILL present in the code.
+
+## Rules
+- Do not identify any new issue. Only judge the ones listed below.
+- Mark an issue as still present only if the underlying problem still exists in the current diff.
+- If a file or line was changed in a way that fixes the issue, mark it as resolved (do not include it).
+- If you cannot find the file/snippet anymore in the diff, treat the issue as resolved.
+
+## Previously Found Issues
+${issuesList}
+
+## Current Diff
+${diff}
+
+Return only the issueKey values that are still present.`;
+  }
+
+  private formatDiffPlain(files: DiffFile[]): string {
+    return files
+      .map((file) =>
+        [`### ${file.filename} (${file.status})`, '```diff', file.patch, '```'].join('\n'),
+      )
+      .join('\n\n');
+  }
+
+  private deduplicateGeneralIssues(issues: LlmGeneralIssue[]): GeneralIssue[] {
+    const unique = new Map<string, GeneralIssue>();
+
+    for (const issue of issues) {
+      const key = buildGeneralIssueKey(issue);
+      if (!unique.has(key)) {
+        unique.set(key, { ...issue, issueKey: key });
+      }
+    }
+
+    return Array.from(unique.values());
+  }
+
+  private applyGeneralIssueCaps(issues: GeneralIssue[]): GeneralIssue[] {
+    const caps: Record<GeneralIssue['criticality'], number> = {
+      high: this.parseGeneralCap(this.config.get<string>('GENERAL_ISSUE_CAP_HIGH'), 3),
+      medium: this.parseGeneralCap(this.config.get<string>('GENERAL_ISSUE_CAP_MEDIUM'), 3),
+      low: this.parseGeneralCap(this.config.get<string>('GENERAL_ISSUE_CAP_LOW'), 3),
+    };
+    const counts: Record<GeneralIssue['criticality'], number> = { high: 0, medium: 0, low: 0 };
+
+    return issues.filter((issue) => {
+      if (counts[issue.criticality] >= caps[issue.criticality]) {
+        return false;
+      }
+      counts[issue.criticality] += 1;
+      return true;
+    });
+  }
+
+  private parseGeneralCap(value: string | undefined, fallback: number): number {
+    const parsed = Number.parseInt(value ?? '', 10);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
   }
 
   private async analyzeBatchWithFallback(
@@ -87,7 +373,6 @@ export class LlmService {
     files: DiffFile[],
     sharedContext: string,
     rulesByFile: FileRulesContext[],
-    agentContext?: string,
   ): Promise<LlmIssue[]> {
     try {
       return await this.analyzeBatch(
@@ -96,7 +381,6 @@ export class LlmService {
         files,
         sharedContext,
         rulesByFile,
-        agentContext,
       );
     } catch (err) {
       if (!this.isPromptTooLargeError(err)) {
@@ -121,7 +405,6 @@ export class LlmService {
           files,
           '',
           rulesByFile,
-          agentContext,
         );
       }
 
@@ -140,7 +423,6 @@ export class LlmService {
               batch,
               '',
               rulesByFile,
-              agentContext,
             )),
           );
         }
@@ -160,7 +442,6 @@ export class LlmService {
     files: DiffFile[],
     sharedContext: string,
     rulesByFile: FileRulesContext[],
-    agentContext?: string,
   ): Promise<LlmIssue[]> {
     const rulesLookup = new Map(rulesByFile.map((entry) => [entry.filename, entry]));
     const filesWithRules = files.filter((file) => {
@@ -178,7 +459,6 @@ export class LlmService {
       prBody,
       diff,
       sharedContext,
-      agentContext,
     );
 
     const structuredModel = this.model.withStructuredOutput(LlmOutputSchema);
@@ -218,7 +498,6 @@ export class LlmService {
     prBody: string,
     diff: string,
     sharedContext: string,
-    agentContext?: string,
   ): string {
     return `You are a strict code reviewer. Your job is to enforce the rules listed below — nothing else.
 
@@ -230,6 +509,7 @@ export class LlmService {
 - Every issue must point to a line that exists in the diff hunks below. Do not reference lines outside the diff.
 - Shared/imported files are read-only context. Never create an issue targeting them.
 - If the diff is clean relative to the rules, return an empty issues array.
+- \`description\` and \`reason\` must say different things. \`description\` states the problem in general terms. \`reason\` must explain, referencing the actual code in \`snippet\`, why this specific occurrence violates the rule. Never set \`reason\` to just the rule name or a copy of \`description\`.
 
 ## Pull Request
 Title: ${prTitle}
@@ -239,7 +519,6 @@ Description: ${prBody || '(none)'}
 ${diff}
 
 ${sharedContext ? `## Shared/Imported Files Context (read-only)\n${sharedContext}\n` : ''}
-${agentContext ? `## Repository-Specific Rules (from AGENTS.md)\n${agentContext}\n` : ''}
 Report only violations. If no rule is violated, return { "issues": [] }.`;
   }
 

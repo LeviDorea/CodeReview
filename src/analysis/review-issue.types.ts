@@ -12,3 +12,12 @@ export interface ReviewIssue {
   baselineStatus?: ReviewIssueBaselineStatus;
   advisory?: boolean;
 }
+
+export interface GeneralIssue {
+  file: string;
+  snippet: string;
+  description: string;
+  reason: string;
+  criticality: ReviewCriticality;
+  issueKey: string;
+}

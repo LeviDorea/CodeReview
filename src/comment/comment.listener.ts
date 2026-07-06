@@ -39,6 +39,7 @@ export class CommentListener {
       score: analysis.score,
       prTitle: analysis.prTitle,
       issues: analysis.issues as any[],
+      generalIssues: (analysis.generalIssues as any[]) ?? [],
     });
 
     await this.github.publishComment(owner, repo, prNumber, installationId, body);

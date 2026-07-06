@@ -1,12 +1,21 @@
 import { Injectable } from '@nestjs/common';
-import { ReviewIssue } from '../analysis/review-issue.types';
+import { GeneralIssue, ReviewIssue } from '../analysis/review-issue.types';
 import { detectLanguageFromFilename } from '../common/utils/file-language.util';
 
 export interface CommentData {
   score: number;
   prTitle: string;
   issues: ReviewIssue[];
+  generalIssues?: GeneralIssue[];
 }
+
+type CommentIssue = Pick<
+  ReviewIssue,
+  'file' | 'snippet' | 'description' | 'reason' | 'criticality'
+> & {
+  rule?: string;
+  baselineStatus?: ReviewIssue['baselineStatus'];
+};
 
 @Injectable()
 export class CommentService {
@@ -23,7 +32,7 @@ export class CommentService {
   };
 
   formatMarkdown(data: CommentData): string {
-    const { score, issues } = data;
+    const { score, issues, generalIssues = [] } = data;
     const indicator = score >= 80 ? '✅' : score >= 50 ? '⚠️' : '❌';
     const knownDebtIssues = issues.filter((issue) => issue.baselineStatus === 'known_debt');
     const scoredIssues = issues.filter(
@@ -87,6 +96,15 @@ export class CommentService {
       );
     }
 
+    if (generalIssues.length > 0) {
+      sections.push(
+        this.renderCollapsedSection(
+          `🧭 Achados Gerais (${generalIssues.length}, não afeta a nota)`,
+          generalIssues,
+        ),
+      );
+    }
+
     const noIssuesMessage =
       scoredIssues.length === 0 && advisoryIssues.length === 0 && knownDebtIssues.length === 0
         ? '\n\n> ✅ Nenhum problema encontrado. Excelente trabalho!\n'
@@ -108,7 +126,7 @@ export class CommentService {
     ].join('\n');
   }
 
-  private renderIssueDetails(issue: ReviewIssue, statusSuffix = ''): string {
+  private renderIssueDetails(issue: CommentIssue, statusSuffix = ''): string {
     const lines: string[] = [];
     const statusLine =
       issue.baselineStatus === 'new'
@@ -122,7 +140,9 @@ export class CommentService {
     lines.push('<details>');
     lines.push(`<summary><code>${issue.file}</code>${statusSuffix} — ${issue.description}</summary>`);
     lines.push('');
-    lines.push(`**Regra:** ${issue.rule}`);
+    if (issue.rule) {
+      lines.push(`**Regra:** ${issue.rule}`);
+    }
     if (statusLine) {
       lines.push(`**Status:** ${statusLine}`);
     }
@@ -140,7 +160,7 @@ export class CommentService {
     return lines.join('\n');
   }
 
-  private renderCollapsedSection(title: string, sectionIssues: ReviewIssue[]): string {
+  private renderCollapsedSection(title: string, sectionIssues: CommentIssue[]): string {
     const lines: string[] = [];
     lines.push('<details>');
     lines.push(`<summary><strong>${title}</strong></summary>`);

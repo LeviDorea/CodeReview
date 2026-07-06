@@ -25,20 +25,19 @@ describe('RepositoriesService', () => {
   beforeEach(() => jest.clearAllMocks());
 
   describe('create', () => {
-    it('should register webhook and persist repository', async () => {
+    it('should persist repository without creating a per-repo webhook', async () => {
       mockPrisma.repository.findUnique.mockResolvedValue(null);
-      mockGithub.registerWebhook.mockResolvedValue(777);
-      mockPrisma.repository.create.mockResolvedValue({ id: '1', webhookId: 777 });
+      mockPrisma.repository.create.mockResolvedValue({ id: '1', webhookId: null });
 
       const svc = makeService();
       const dto = { owner: 'org', name: 'repo', fullName: 'org/repo', githubId: 1, installationId: 10 };
       const result = await svc.create(dto);
 
-      expect(mockGithub.registerWebhook).toHaveBeenCalledWith('org', 'repo', 10);
+      expect(mockGithub.registerWebhook).not.toHaveBeenCalled();
       expect(mockPrisma.repository.create).toHaveBeenCalledWith({
-        data: { ...dto, webhookId: 777 },
+        data: { ...dto, webhookId: null },
       });
-      expect(result).toMatchObject({ webhookId: 777 });
+      expect(result).toMatchObject({ webhookId: null });
     });
 
     it('should throw ConflictException if repository already exists', async () => {

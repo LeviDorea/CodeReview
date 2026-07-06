@@ -1,5 +1,7 @@
 import { LlmService } from './llm.service';
 import { DiffService } from './diff.service';
+import { buildGeneralIssueKey } from './review-issue.util';
+import type { FileRulesContext } from '../rules/rules.service';
 
 jest.mock('@langchain/openai', () => ({
   ChatOpenAI: jest.fn().mockImplementation(() => ({
@@ -22,7 +24,7 @@ const mockConfig = {
   },
 };
 
-const RULES = [
+const RULES: FileRulesContext[] = [
   {
     filename: 'src/app.ts',
     language: 'typescript',
@@ -97,7 +99,7 @@ describe('LlmService', () => {
       { filename: 'src/a.ts', patch: `@@ -1 +1 @@\n+${'a'.repeat(100)}`, status: 'modified' },
       { filename: 'src/b.ts', patch: `@@ -1 +1 @@\n+${'b'.repeat(100)}`, status: 'modified' },
     ];
-    const largeFileRules = [
+    const largeFileRules: FileRulesContext[] = [
       {
         filename: 'src/a.ts',
         language: 'typescript',
@@ -378,5 +380,152 @@ describe('LlmService', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].description).toBe('Valid diff issue');
+  });
+
+  describe('analyzeGeneral', () => {
+    it('should run discovery mode and assign issueKeys when there are no previous issues', async () => {
+      mockInvoke.mockResolvedValue({
+        issues: [
+          {
+            file: 'src/app.ts',
+            snippet: 'const secret = "hardcoded";',
+            description: 'Undefined index risk',
+            reason: 'Array access without isset check',
+            criticality: 'medium' as const,
+          },
+        ],
+      });
+
+      const svc = new LlmService(mockConfig as any, new DiffService());
+      const result = await svc.analyzeGeneral('PR title', 'PR body', FILES, undefined, []);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].issueKey).toEqual(expect.any(String));
+      expect((result[0] as any).rule).toBeUndefined();
+    });
+
+    it('should retry without AGENTS.md context when the discovery prompt is too large', async () => {
+      mockInvoke
+        .mockRejectedValueOnce(oversizedPromptError)
+        .mockResolvedValueOnce({ issues: [] });
+
+      const svc = new LlmService(mockConfig as any, new DiffService());
+      await svc.analyzeGeneral(
+        'PR title',
+        'PR body',
+        FILES,
+        '## Conventions\nSome long AGENTS.md content.',
+        [],
+      );
+
+      expect(mockInvoke).toHaveBeenCalledTimes(2);
+      expect(mockInvoke.mock.calls[0][0]).toContain('## Repository Context (AGENTS.md)');
+      expect(mockInvoke.mock.calls[1][0]).not.toContain('## Repository Context (AGENTS.md)');
+    });
+
+    it('should not exhaust retries on a prompt-too-large error in discovery mode', async () => {
+      mockInvoke.mockRejectedValue(oversizedPromptError);
+
+      const svc = new LlmService(mockConfig as any, new DiffService());
+
+      await expect(
+        svc.analyzeGeneral('PR title', 'PR body', FILES, undefined, []),
+      ).rejects.toBe(oversizedPromptError);
+
+      // No AGENTS.md to drop, single file so no further split possible: exactly one real attempt.
+      expect(mockInvoke).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not call the LLM in discovery mode when there are no changed files', async () => {
+      const svc = new LlmService(mockConfig as any, new DiffService());
+      const result = await svc.analyzeGeneral('PR title', 'PR body', [], undefined, []);
+
+      expect(result).toEqual([]);
+      expect(mockInvoke).not.toHaveBeenCalled();
+    });
+
+    it('should run verify mode and only keep previously found issues confirmed still present', async () => {
+      const resolvedIssue = {
+        file: 'src/app.ts',
+        snippet: 'const secret = "hardcoded";',
+        description: 'Resolved issue',
+        reason: 'Already fixed',
+        criticality: 'medium' as const,
+        issueKey: buildGeneralIssueKey({
+          file: 'src/app.ts',
+          description: 'Resolved issue',
+          reason: 'Already fixed',
+        }),
+      };
+      const stillPresentIssue = {
+        file: 'src/app.ts',
+        snippet: 'const secret = "hardcoded";',
+        description: 'Still present issue',
+        reason: 'Not fixed yet',
+        criticality: 'high' as const,
+        issueKey: buildGeneralIssueKey({
+          file: 'src/app.ts',
+          description: 'Still present issue',
+          reason: 'Not fixed yet',
+        }),
+      };
+
+      mockInvoke.mockResolvedValue({
+        stillPresentIssueKeys: [stillPresentIssue.issueKey],
+      });
+
+      const svc = new LlmService(mockConfig as any, new DiffService());
+      const result = await svc.analyzeGeneral('PR title', 'PR body', FILES, undefined, [
+        resolvedIssue,
+        stillPresentIssue,
+      ]);
+
+      expect(result).toEqual([stillPresentIssue]);
+    });
+
+    it('should never invent a new issue in verify mode even if the LLM returns an unknown key', async () => {
+      const previousIssue = {
+        file: 'src/app.ts',
+        snippet: 'const secret = "hardcoded";',
+        description: 'Previous issue',
+        reason: 'Not fixed yet',
+        criticality: 'high' as const,
+        issueKey: buildGeneralIssueKey({
+          file: 'src/app.ts',
+          description: 'Previous issue',
+          reason: 'Not fixed yet',
+        }),
+      };
+
+      mockInvoke.mockResolvedValue({
+        stillPresentIssueKeys: [previousIssue.issueKey, 'some-hallucinated-key'],
+      });
+
+      const svc = new LlmService(mockConfig as any, new DiffService());
+      const result = await svc.analyzeGeneral('PR title', 'PR body', FILES, undefined, [
+        previousIssue,
+      ]);
+
+      expect(result).toEqual([previousIssue]);
+    });
+
+    it('should not call the LLM in verify mode when none of the previous issue files changed', async () => {
+      const previousIssue = {
+        file: 'src/other-file.ts',
+        snippet: 'x',
+        description: 'Previous issue',
+        reason: 'Not fixed yet',
+        criticality: 'high' as const,
+        issueKey: 'some-key',
+      };
+
+      const svc = new LlmService(mockConfig as any, new DiffService());
+      const result = await svc.analyzeGeneral('PR title', 'PR body', FILES, undefined, [
+        previousIssue,
+      ]);
+
+      expect(result).toEqual([]);
+      expect(mockInvoke).not.toHaveBeenCalled();
+    });
   });
 });
