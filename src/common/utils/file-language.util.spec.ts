@@ -17,6 +17,9 @@ describe('file-language.util', () => {
       expect(detectLanguageFromFilename('database-image/sql/schema.sql')).toBe(
         'sql',
       );
+      expect(detectLanguageFromFilename('php/app/View/Pedidos/war_room.ctp')).toBe(
+        'php',
+      );
       expect(detectLanguageFromFilename('aws/secrets.sh')).toBe('shell');
       expect(detectLanguageFromFilename('Dockerfile')).toBe('dockerfile');
       expect(detectLanguageFromFilename('Dockerfile.dev')).toBe('dockerfile');

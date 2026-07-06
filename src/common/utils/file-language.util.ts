@@ -16,6 +16,7 @@ const LANGUAGE_ALIASES: Record<string, string> = {
   rb: 'ruby',
   go: 'go',
   php: 'php',
+  ctp: 'php',
   sql: 'sql',
   cs: 'csharp',
   'c#': 'csharp',
