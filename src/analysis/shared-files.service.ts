@@ -119,10 +119,21 @@ export class SharedFilesService {
       }
     }
 
+    // Convention-derived candidates include paths that may not exist (core
+    // Cake classes, helpers matched as models). One tree call decides
+    // membership for all of them instead of a 404 per candidate.
+    const existingPaths =
+      sharedPaths.size > 0
+        ? await this.github.getRepoTreePaths(owner, repo, ref, installationId)
+        : null;
+
     const contents: string[] = [];
     for (const path of sharedPaths) {
       const normalizedPath = normalizePath(path);
       if (changedFilePaths.has(normalizedPath)) {
+        continue;
+      }
+      if (existingPaths && !existingPaths.has(normalizedPath)) {
         continue;
       }
 

@@ -39,9 +39,15 @@ export class GithubService {
     return app.octokit;
   }
 
+  private errorStatus(err: unknown): number | undefined {
+    return (err as any)?.status ?? (err as any)?.response?.status;
+  }
+
   private shouldRetry(err: unknown): boolean {
-    const status = (err as any)?.status ?? (err as any)?.response?.status;
-    if (status === 401 || status === 403) return false;
+    const status = this.errorStatus(err);
+    // 401/403 are auth problems and 404 is deterministic — retrying only
+    // burns the whole delay ladder for the same answer.
+    if (status === 401 || status === 403 || status === 404) return false;
     return true;
   }
 
@@ -51,6 +57,9 @@ export class GithubService {
       delays: [1000, 2000, 4000, 8000, 16000],
       retryOn: (err: unknown) => this.shouldRetry(err),
       onFinalFailure: async (err: unknown) => {
+        if (this.errorStatus(err) === 404) {
+          return;
+        }
         this.logger.error('GitHub API call failed after all retries', { error: err });
       },
     };
@@ -195,21 +204,72 @@ export class GithubService {
     path: string,
     installationId: number,
     ref?: string,
-  ): Promise<string> {
+  ): Promise<string | null> {
     const octokit = await this.getInstallationOctokit(installationId);
-    const { data } = await withRetry<{ data: any }>(
-      () =>
-        (octokit as any).request('GET /repos/{owner}/{repo}/contents/{path}', {
-          owner,
-          repo,
-          path,
-          ...(ref ? { ref } : {}),
-        }),
-      this.githubRetryOpts,
-    );
+    let data: any;
+    try {
+      ({ data } = await withRetry<{ data: any }>(
+        () =>
+          (octokit as any).request('GET /repos/{owner}/{repo}/contents/{path}', {
+            owner,
+            repo,
+            path,
+            ...(ref ? { ref } : {}),
+          }),
+        this.githubRetryOpts,
+      ));
+    } catch (err) {
+      // Absent file is a normal outcome for convention-derived paths.
+      if (this.errorStatus(err) === 404) {
+        return null;
+      }
+      throw err;
+    }
     if (Array.isArray(data)) return '';
     const content = (data as any).content ?? '';
     return Buffer.from(content, 'base64').toString('utf-8');
+  }
+
+  /**
+   * Full list of blob paths at a ref, from one recursive tree call. Used to
+   * discard convention-derived candidate paths without a contents request
+   * per candidate. Returns null when the tree is truncated or unavailable,
+   * meaning membership cannot be decided and callers should not filter.
+   */
+  async getRepoTreePaths(
+    owner: string,
+    repo: string,
+    ref: string,
+    installationId: number,
+  ): Promise<Set<string> | null> {
+    const octokit = await this.getInstallationOctokit(installationId);
+    try {
+      const { data } = await withRetry<{ data: any }>(
+        () =>
+          (octokit as any).request(
+            'GET /repos/{owner}/{repo}/git/trees/{tree_sha}',
+            { owner, repo, tree_sha: ref, recursive: '1' },
+          ),
+        this.githubRetryOpts,
+      );
+      if ((data as any).truncated) {
+        this.logger.warn(
+          `Repo tree for ${owner}/${repo}@${ref} is truncated; skipping path filtering`,
+        );
+        return null;
+      }
+      const entries = ((data as any).tree ?? []) as Array<{ path?: string; type?: string }>;
+      return new Set(
+        entries
+          .filter((entry) => entry.type === 'blob' && typeof entry.path === 'string')
+          .map((entry) => entry.path as string),
+      );
+    } catch (err) {
+      this.logger.warn(
+        `Could not fetch repo tree for ${owner}/${repo}@${ref}: ${String(err)}`,
+      );
+      return null;
+    }
   }
 
   async getRepoLanguages(

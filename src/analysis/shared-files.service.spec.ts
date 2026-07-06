@@ -2,6 +2,7 @@ import { SharedFilesService } from './shared-files.service';
 
 const mockGithub = {
   getFileContent: jest.fn(),
+  getRepoTreePaths: jest.fn(),
 };
 
 function makeService() {
@@ -9,7 +10,12 @@ function makeService() {
 }
 
 describe('SharedFilesService', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // null = tree unavailable → no path filtering, preserving each test's
+    // own getFileContent expectations unless it opts into a tree.
+    mockGithub.getRepoTreePaths.mockResolvedValue(null);
+  });
 
   describe('extractRelativeImports', () => {
     it('should extract relative TS imports', () => {
@@ -162,6 +168,48 @@ describe('SharedFilesService', () => {
       expect(result).toContain(
         '// File: php/app/Test/Case/Controller/PedidosControllerTest.php',
       );
+    });
+
+    it('should not fetch convention-derived paths that are absent from the repo tree', async () => {
+      mockGithub.getRepoTreePaths.mockResolvedValue(
+        new Set([
+          'php/app/Controller/PedidosController.php',
+          'php/app/Model/Pedido.php',
+        ]),
+      );
+      mockGithub.getFileContent.mockImplementation(
+        (_owner: string, _repo: string, path: string) => {
+          const contents: Record<string, string> = {
+            'php/app/Controller/PedidosController.php': `
+              App::uses('NotFoundException', 'Error');
+              class PedidosController extends AppController {
+                public function view() {
+                  return $this->Pedido->read();
+                }
+              }
+            `,
+            'php/app/Model/Pedido.php': 'class Pedido extends AppModel {}',
+          };
+          return Promise.resolve(contents[path] ?? '');
+        },
+      );
+
+      const svc = makeService();
+      const files = [
+        {
+          filename: 'php/app/Controller/PedidosController.php',
+          patch: '@@ -1 +1 @@\n+return $this->Pedido->read();',
+        },
+      ];
+
+      const result = await svc.fetchSharedFilesContext('org', 'repo', 1, files, 'sha123');
+
+      expect(result).toContain('// File: php/app/Model/Pedido.php');
+      // Cake core class resolved by convention but absent from the tree:
+      // never fetched, so no 404 round-trip.
+      const fetchedPaths = mockGithub.getFileContent.mock.calls.map((call) => call[2]);
+      expect(fetchedPaths).not.toContain('php/app/Error/NotFoundException.php');
+      expect(fetchedPaths).not.toContain('php/app/Controller/AppController.php');
     });
 
     it('should include explicit rule evidence files as read-only context', async () => {

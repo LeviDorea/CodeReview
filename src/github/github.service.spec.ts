@@ -131,6 +131,54 @@ describe('GithubService', () => {
       const result = await svc.getFileContent('org', 'repo', 'src/', INSTALLATION_ID);
       expect(result).toBe('');
     });
+
+    it('should return null on 404 without retrying', async () => {
+      const { svc, mockRequest } = buildService();
+      mockRequest.mockRejectedValue(Object.assign(new Error('Not Found'), { status: 404 }));
+
+      const result = await svc.getFileContent('org', 'repo', 'missing.php', INSTALLATION_ID);
+
+      expect(result).toBeNull();
+      expect(mockRequest).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('getRepoTreePaths', () => {
+    it('should return the set of blob paths', async () => {
+      const { svc, mockRequest } = buildService();
+      mockRequest.mockResolvedValue({
+        data: {
+          truncated: false,
+          tree: [
+            { path: 'php/app/Model/Pedido.php', type: 'blob' },
+            { path: 'php/app/Model', type: 'tree' },
+            { path: 'README.md', type: 'blob' },
+          ],
+        },
+      });
+
+      const result = await svc.getRepoTreePaths('org', 'repo', 'sha123', INSTALLATION_ID);
+
+      expect(result).toEqual(new Set(['php/app/Model/Pedido.php', 'README.md']));
+    });
+
+    it('should return null when the tree is truncated', async () => {
+      const { svc, mockRequest } = buildService();
+      mockRequest.mockResolvedValue({ data: { truncated: true, tree: [] } });
+
+      const result = await svc.getRepoTreePaths('org', 'repo', 'sha123', INSTALLATION_ID);
+      expect(result).toBeNull();
+    });
+
+    it('should return null when the tree request fails', async () => {
+      const { svc, mockRequest } = buildService();
+      mockRequest.mockRejectedValue(Object.assign(new Error('Not Found'), { status: 404 }));
+
+      const result = await svc.getRepoTreePaths('org', 'repo', 'sha123', INSTALLATION_ID);
+
+      expect(result).toBeNull();
+      expect(mockRequest).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('getRepoLanguages', () => {
