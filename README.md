@@ -160,9 +160,25 @@ Em **Settings → Developer settings → GitHub Apps → New GitHub App** (na co
 
 - **Webhook URL**: `https://SEU_DOMINIO/webhook/github`
 - **Webhook secret**: gere um valor aleatório forte (ex.: `openssl rand -hex 32`) — será o `GITHUB_WEBHOOK_SECRET`
-- **Permissions**: Pull requests (Read & write), Contents (Read-only), Metadata (Read-only), Issues (Read & write — para publicar comentários)
-- **Subscribe to events**: Pull request
-- Depois de criar: anote o **App ID** (`GITHUB_APP_ID`), gere uma **private key** (o conteúdo do `.pem` vai em `GITHUB_APP_PRIVATE_KEY`) e **instale o App** nos repositórios que serão revisados (aba *Install App*).
+
+**Repository permissions** (todas as demais ficam em *No access*):
+
+| Permissão | Acesso | Para quê |
+|---|---|---|
+| Contents | Read and write | Ler diff, arquivos e árvore do repositório |
+| Metadata | Read-only | Obrigatória (o GitHub marca sozinho) |
+| Pull requests | Read and write | Ler PRs e publicar o comentário/reação da análise |
+| Webhooks | Read and write | O PRzator registra o webhook de cada repositório via API |
+
+**Subscribe to events** (marcar):
+
+- [x] Pull request
+- [x] Pull request review
+- [x] Pull request review comment
+- [x] Pull request review thread
+- [x] Merge queue entry
+
+Depois de criar: anote o **App ID** (`GITHUB_APP_ID`), gere uma **private key** (o conteúdo do `.pem` vai em `GITHUB_APP_PRIVATE_KEY`) e **instale o App** nos repositórios que serão revisados (aba *Install App*).
 
 > Cada ambiente (dev, prod da empresa) tem o **seu próprio** GitHub App, com sua própria chave e secret. O App usado em desenvolvimento não vai para a empresa.
 
