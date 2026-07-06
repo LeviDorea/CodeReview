@@ -1,0 +1,2028 @@
+{
+  "generatedAt": "2026-07-06T12:30:14.524Z",
+  "notes": [
+    "Base consolidada de regras aprovadas do PRzator. Cada regra ja reflete os ajustes definidos em 04-rule-approval-review.md do respectivo repo. Regras descartadas na revisao NAO estao neste arquivo.",
+    "Enriched 50/71 rules with whyThisRuleExists/localEvidence from reviewrepo-output via exact (sourceRepo, title) match.",
+    "10 renamed-during-approval rules re-linked to their original suggestions (renamedFrom field) and enriched.",
+    "11 hand-written rules received manually curated whyThisRuleExists/localEvidence, with every evidence path verified against the repo working copies in /home/elevia/ProjetosElevia."
+  ],
+  "rules": [
+    {
+      "id": "nimda-01",
+      "sourceRepo": "nimda",
+      "title": "Controller Actions Should Stay Thin",
+      "criticality": "high",
+      "classification": "framework-best-practice",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Controller/**/*.php"
+      ],
+      "description": "A controller action adds validation, calculations, status transitions, persistence orchestration, or integration behavior that would be safer in a model, component, lib, or event listener.",
+      "reviewStatus": "approved",
+      "confidence": "high",
+      "whyThisRuleExists": "CakePHP 2.x controllers are meant to turn requests into responses, while this repo already keeps significant business and data workflow in models, callbacks, libs, and listeners.",
+      "localEvidence": [
+        "php/app/Controller/AppController.php",
+        "php/app/Controller/UsersController.php",
+        "php/app/Controller/PlanosController.php",
+        "php/app/Model/AppModel.php",
+        "php/app/Model/User.php",
+        "php/app/Model/Conta.php"
+      ],
+      "externalSources": [
+        "https://book.cakephp.org/2.x/controllers.html",
+        "https://book.cakephp.org/2.x/models.html"
+      ],
+      "enrichedFrom": "nimda/2026-07-02-124325/02-rule-suggestions.json"
+    },
+    {
+      "id": "nimda-02",
+      "sourceRepo": "nimda",
+      "title": "Public Auth Exceptions Require Explicit Review",
+      "criticality": "high",
+      "classification": "security",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Controller/**/*.php",
+        "php/app/Config/routes.php"
+      ],
+      "description": "A controller broadens public access by adding or changing Auth->allow(), a login bypass, or a publicly reachable admin route without narrow justification and regression coverage.",
+      "reviewStatus": "approved",
+      "confidence": "high",
+      "whyThisRuleExists": "This repo is an admin dashboard with selective public endpoints. Authorization changes have outsized risk and should be reviewed as security-sensitive even when the code change looks small.",
+      "localEvidence": [
+        "php/app/Controller/AppController.php",
+        "php/app/Controller/UsersController.php",
+        "php/app/Config/routes.php"
+      ],
+      "externalSources": [
+        "https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html",
+        "https://book.cakephp.org/2.x/controllers.html"
+      ],
+      "enrichedFrom": "nimda/2026-07-02-124325/02-rule-suggestions.json"
+    },
+    {
+      "id": "nimda-03",
+      "sourceRepo": "nimda",
+      "title": "Preserve Shared Document Normalization and Alphanumeric CNPJ Handling",
+      "criticality": "high",
+      "classification": "domain-rule",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Controller/**/*.php",
+        "php/app/Model/**/*.php",
+        "php/app/Lib/**/*.php"
+      ],
+      "description": "A PHP-side change reintroduces numeric-only CNPJ assumptions, bypasses shared normalization helpers, or duplicates document-cleaning logic instead of reusing the existing FuncoesLib and model validation path.",
+      "reviewStatus": "approved",
+      "confidence": "high",
+      "whyThisRuleExists": "nimda already centralizes document normalization and validation in shared helpers and model callbacks, and this repo has explicit tests for alphanumeric CNPJ support.",
+      "localEvidence": [
+        "php/app/Lib/FuncoesLib.php",
+        "php/app/Model/User.php",
+        "php/app/Model/Conta.php",
+        "php/app/Controller/UsersController.php",
+        "php/app/Test/Case/Lib/FuncoesLibTest.php",
+        "php/app/Test/Case/Model/UserTest.php"
+      ],
+      "externalSources": [],
+      "enrichedFrom": "nimda/2026-07-02-124325/02-rule-suggestions.json"
+    },
+    {
+      "id": "nimda-04",
+      "sourceRepo": "nimda",
+      "title": "Preserve Event-Based Side Effects in Core Workflows",
+      "criticality": "medium",
+      "classification": "local-convention",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Model/**/*.php",
+        "php/app/Lib/Event/**/*.php",
+        "php/app/Config/events.php"
+      ],
+      "description": "A change to user or invoice lifecycle code removes existing CakeEvent dispatch, bypasses registered listeners, or inlines external side effects directly into core writes without a compelling reason.",
+      "reviewStatus": "approved",
+      "confidence": "high",
+      "whyThisRuleExists": "The repo already uses Cake events and listeners to keep core model writes separate from notification and queue side effects, and at least one model test asserts this behavior explicitly.",
+      "localEvidence": [
+        "php/app/Config/events.php",
+        "php/app/Model/AppModel.php",
+        "php/app/Model/User.php",
+        "php/app/Lib/Event/UserMauticListener.php",
+        "php/app/Test/Case/Model/UserTest.php"
+      ],
+      "externalSources": [
+        "https://book.cakephp.org/2.x/core-libraries/events.html"
+      ],
+      "enrichedFrom": "nimda/2026-07-02-124325/02-rule-suggestions.json"
+    },
+    {
+      "id": "nimda-05",
+      "sourceRepo": "nimda",
+      "title": "Review Paginated and VirtualField Queries for Cost",
+      "criticality": "medium",
+      "classification": "performance",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Controller/**/*.php",
+        "php/app/Model/**/*.php"
+      ],
+      "description": "A change adds virtual fields, correlated subqueries, wide joins, recursive loading, or broader contain/paginate settings to admin listings without considering query cost and data volume.",
+      "reviewStatus": "approved",
+      "confidence": "medium",
+      "whyThisRuleExists": "This repo uses virtualFields and query shaping heavily in user, account, subscription, and payment dashboards. Small SQL-shape changes can become expensive in a legacy admin app.",
+      "localEvidence": [
+        "php/app/Model/User.php",
+        "php/app/Model/Conta.php",
+        "php/app/Model/Assinatura.php",
+        "php/app/Controller/UsersController.php",
+        "php/app/Controller/PlanosController.php",
+        "php/app/Controller/PagamentosController.php"
+      ],
+      "externalSources": [
+        "https://book.cakephp.org/2.x/models/virtual-fields.html",
+        "https://book.cakephp.org/2.x/models.html"
+      ],
+      "enrichedFrom": "nimda/2026-07-02-124325/02-rule-suggestions.json"
+    },
+    {
+      "id": "nimda-06",
+      "sourceRepo": "nimda",
+      "title": "High-Risk Behavior Changes Need Cake Test Coverage",
+      "criticality": "medium",
+      "classification": "testing",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Controller/**/*.php",
+        "php/app/Model/**/*.php",
+        "php/app/Lib/**/*.php",
+        "php/app/Config/events.php"
+      ],
+      "description": "A change to model callbacks, auth rules, billing flows, shared libs, or event/listener behavior should add or update fixture-backed tests under php/app/Test/Case when the affected behavior is not already covered.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Original vinha 'high' e sem escopo; reduzido para medium e restrito a callbacks de model, auth, billing, libs compartilhadas, listeners/integracoes.",
+      "confidence": "high",
+      "whyThisRuleExists": "The repo already mirrors app layers in Cake tests, uses jc_fixtures, and runs composer test on pull requests. Behavior changes without tests are likely to regress silently in a legacy CakePHP codebase.",
+      "localEvidence": [
+        ".github/workflows/production.yaml",
+        "php/composer.json",
+        "php/app/Test/Case/Controller/AppControllerTest.php",
+        "php/app/Test/Case/Controller/UsersControllerTest.php",
+        "php/app/Test/Case/Model/ContaTest.php",
+        "php/app/Test/Case/Model/UserTest.php",
+        "php/app/Test/Case/Lib/FuncoesLibTest.php"
+      ],
+      "externalSources": [
+        "https://book.cakephp.org/2.x/development/testing.html"
+      ],
+      "enrichedFrom": "nimda/2026-07-02-124325/02-rule-suggestions.json",
+      "renamedFrom": "Behavior Changes Need Cake Test Coverage"
+    },
+    {
+      "id": "nimda-07",
+      "sourceRepo": "nimda",
+      "title": "Secrets and Environment Endpoints Must Not Be Hardcoded in App Logic",
+      "criticality": "high",
+      "classification": "security",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Controller/**/*.php",
+        "php/app/Model/**/*.php",
+        "php/app/Lib/**/*.php",
+        "php/app/View/**/*.ctp",
+        "php/app/Config/*.php"
+      ],
+      "description": "A change hardcodes credentials, tokens, private keys, queue endpoints, or environment-specific service URLs in controllers, models, libs, or views instead of reading them from the config layer and environment-backed settings.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Regra original misturava segredo hardcoded com decisao arquitetural de onde config deveria morar, e tinha fileGlobs amplo demais (php/app/**/*.php). Separado para focar so em segredo/token/credencial/endpoint, com escopo mais claro.",
+      "confidence": "high",
+      "whyThisRuleExists": "nimda already centralizes runtime wiring for databases, queues, cloud integrations, and third-party services in config files. Scattering credentials or endpoint decisions across controllers/models makes review and rotation much harder.",
+      "localEvidence": [
+        "php/app/Config/core.php",
+        "php/app/Config/database.php",
+        "php/app/Config/email.php",
+        "php/app/Lib/Event/UserMauticListener.php",
+        "php/app/Controller/AppController.php"
+      ],
+      "externalSources": [
+        "https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html"
+      ],
+      "enrichedFrom": "nimda/2026-07-02-124325/02-rule-suggestions.json",
+      "renamedFrom": "Integration Credentials and Endpoints Belong in the Config Layer"
+    },
+    {
+      "id": "nimda-08",
+      "sourceRepo": "nimda",
+      "title": "CakePHP 2 File/Class Naming Mismatch",
+      "criticality": "high",
+      "classification": "framework-best-practice",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Controller/**/*.php",
+        "php/app/Model/**/*.php",
+        "php/app/Lib/**/*.php",
+        "php/app/Controller/Component/**/*.php"
+      ],
+      "description": "In CakePHP 2, the filename must exactly match the class name including case. A mismatch causes silent load failures. Bad: file `emailSender.php` containing `class EmailSender`. Good: file `EmailSender.php` containing `class EmailSender`.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Movida da baseline default para repo-specific porque esta cobranca so faz sentido nos repos legados em CakePHP 2.",
+      "confidence": "high",
+      "whyThisRuleExists": "CakePHP 2 resolves classes from filenames, so a filename/class-name case mismatch fails silently at load time instead of erroring. AppController.php and AppModel.php show the canonical naming this repo follows.",
+      "localEvidence": [
+        "php/app/Controller/AppController.php",
+        "php/app/Model/AppModel.php"
+      ],
+      "externalSources": [
+        "https://book.cakephp.org/2.x/en/conventions.html"
+      ],
+      "enrichedFrom": "manual (evidence verified in ProjetosElevia working copies, 2026-07-06)"
+    },
+    {
+      "id": "nimda-09",
+      "sourceRepo": "nimda",
+      "title": "CakePHP 2 Undeclared $uses or $components",
+      "criticality": "high",
+      "classification": "framework-best-practice",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Controller/**/*.php"
+      ],
+      "description": "A Model or Component is used inside a CakePHP 2 controller without being declared in $uses or $components. This causes a fatal error at runtime. Bad: calling `$this->Payment->save()` without `public $uses = [\"Payment\"]`. Good: declare every Model in `$uses` and every Component in `$components` before using them.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Movida da baseline default para repo-specific porque esta cobranca so faz sentido nos repos legados em CakePHP 2.",
+      "confidence": "high",
+      "whyThisRuleExists": "CakePHP 2 controllers only get magic model/component properties that are declared in $uses/$components (or loaded explicitly); calling an undeclared one is a runtime fatal. The evidence files show the declaration pattern this repo follows.",
+      "localEvidence": [
+        "php/app/Controller/AppController.php",
+        "php/app/Controller/AntecipacaoControleController.php"
+      ],
+      "externalSources": [
+        "https://book.cakephp.org/2.x/controllers.html"
+      ],
+      "enrichedFrom": "manual (evidence verified in ProjetosElevia working copies, 2026-07-06)"
+    },
+    {
+      "id": "nimda-10",
+      "sourceRepo": "nimda",
+      "title": "planos.valor Must Preserve Base-Price Semantics",
+      "criticality": "high",
+      "classification": "domain-rule",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Controller/PlanosController.php",
+        "php/app/Controller/AssinaturasController.php",
+        "php/app/Controller/PagamentosController.php",
+        "php/app/Controller/CouponsController.php",
+        "php/app/Model/Plano.php"
+      ],
+      "description": "In this subscriptions stack, `planos.valor` is the base plan amount and `valor_destaque` is tracked separately, with checkout and billing flows deriving combined totals from both when needed. A change that persists an already-combined total back into `planos.valor`, or otherwise mixes `valor` and `valor_destaque` semantics when saving plans, will corrupt pricing and downstream calculations.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Movida da baseline default para repo-specific e estreitada para os pontos que realmente escrevem ou sincronizam o pricing de planos neste legado.",
+      "confidence": "medium",
+      "whyThisRuleExists": "The repo treats planos.valor as the base amount and composes final charged values with valor_destaque in save, checkout, and billing flows. If a change stores an already-combined amount back into planos.valor, the same price component starts being counted twice across downstream calculations.",
+      "localEvidence": [
+        "php/app/Model/Plano.php",
+        "php/app/Controller/PlanosController.php",
+        "php/app/Controller/AssinaturasController.php",
+        "php/app/Controller/PagamentosController.php",
+        "php/app/Controller/CouponsController.php"
+      ],
+      "externalSources": [],
+      "enrichedFrom": "manual (evidence verified in ProjetosElevia working copies, 2026-07-06)"
+    },
+    {
+      "id": "jobs-professional-api-01",
+      "sourceRepo": "jobs-professional-api",
+      "title": "Controllers Stay Orchestration-Focused",
+      "criticality": "high",
+      "classification": "framework-best-practice",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/src/Controller/**/*.php"
+      ],
+      "description": "A controller action introduced domain decisions, persistence rules, or multi-step workflow logic that should live in a Table or Service class instead of staying in the request/auth/response layer.",
+      "reviewStatus": "approved",
+      "confidence": "high",
+      "whyThisRuleExists": "This repo already centralizes shared controller work in AppController and ApiRestComponent, while reusable domain behavior lives in Table and Service classes. That matches CakePHP guidance to keep controllers thin and model/table objects responsible for data workflows.",
+      "localEvidence": [
+        "php/src/Controller/AppController.php",
+        "php/src/Controller/V1/UsersController.php",
+        "php/src/Model/Table/AppTable.php",
+        "php/src/Service/PropostasService.php"
+      ],
+      "externalSources": [
+        "https://book.cakephp.org/3.x/controllers.html",
+        "https://book.cakephp.org/3.x/orm.html"
+      ],
+      "enrichedFrom": "jobs-professional-api/2026-07-02-133348/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-professional-api-02",
+      "sourceRepo": "jobs-professional-api",
+      "title": "New V1 Endpoints Need Route Permission and Tests",
+      "criticality": "high",
+      "classification": "local-convention",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/config/routes.php",
+        "php/src/Controller/V1/**/*.php",
+        "php/config/Migrations/**/*.php",
+        "php/tests/TestCase/**/*.php",
+        "php/tests/Fixture/**/*.php"
+      ],
+      "description": "A new or changed `/v1` endpoint was shipped without the matching explicit route entry, `api_tipo_permissoes` coverage, and controller integration tests for the allowed actors and HTTP methods.",
+      "reviewStatus": "approved",
+      "confidence": "high",
+      "whyThisRuleExists": "This repo exposes endpoints through explicit routes, authorizes them through lowercase controller/action permission strings, and validates behavior through fixture-backed controller integration tests. Shipping only the controller code is not enough here.",
+      "localEvidence": [
+        "php/config/routes.php",
+        "php/src/Controller/Component/ApiRestComponent.php",
+        "php/config/Migrations/20171122172453_NovoMetodoGetFiltrosDeBusca20171122.php",
+        "php/tests/TestCase/Controller/UsersControllerTest.php",
+        "php/tests/Fixture/ApiTipoPermissoesFixture.php"
+      ],
+      "externalSources": [
+        "https://book.cakephp.org/3.x/development/routing.html",
+        "https://book.cakephp.org/3.x/development/testing.html",
+        "https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html"
+      ],
+      "enrichedFrom": "jobs-professional-api/2026-07-02-133348/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-professional-api-03",
+      "sourceRepo": "jobs-professional-api",
+      "title": "API Errors Flow Through AppException Or ApiRest",
+      "criticality": "high",
+      "classification": "local-convention",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/src/Controller/**/*.php",
+        "php/src/Service/**/*.php",
+        "php/src/Model/Table/**/*.php"
+      ],
+      "description": "New API code returned ad hoc error payloads, swallowed exceptions, or leaked raw exceptions instead of throwing `AppException` or framework HTTP exceptions and translating them through `ApiRestComponent::tratarException()`.",
+      "reviewStatus": "approved",
+      "confidence": "high",
+      "whyThisRuleExists": "The repo already has a central error path: services and tables throw structured exceptions, and controllers delegate translation to ApiRestComponent. Bypassing that pattern makes responses inconsistent and harder to review safely.",
+      "localEvidence": [
+        "php/src/Controller/Component/ApiRestComponent.php",
+        "php/src/Exception/AppException.php",
+        "php/src/Controller/V1/UsersController.php",
+        "php/src/Controller/V1/PropostasController.php",
+        "php/src/Service/PropostasService.php"
+      ],
+      "externalSources": [],
+      "enrichedFrom": "jobs-professional-api/2026-07-02-133348/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-professional-api-04",
+      "sourceRepo": "jobs-professional-api",
+      "title": "Cache Sensitive Endpoint Changes Must Prove Fresh Behavior",
+      "criticality": "medium",
+      "classification": "operations",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/config/routes.php",
+        "php/src/Model/Table/**/*.php",
+        "php/src/Controller/**/*.php",
+        "php/tests/TestCase/**/*.php"
+      ],
+      "description": "A change to routes, API key permissions, or cached lookup tables landed without explicit cache isolation in tests or an operational note about `_cake_routes_` and `long` cache invalidation.",
+      "reviewStatus": "approved",
+      "confidence": "high",
+      "whyThisRuleExists": "This repo caches routes and permission-bearing API keys aggressively outside debug mode. Review should flag changes that can look correct in code review but remain stale at runtime or in tests until caches are cleared.",
+      "localEvidence": [
+        "php/src/Application.php",
+        "php/config/app.php",
+        "php/src/Model/Table/ApiKeysTable.php",
+        "php/tests/TestCase/Controller/UsersControllerTest.php",
+        "php/tests/TestCase/Controller/ConfiguracoesControllerTest.php"
+      ],
+      "externalSources": [
+        "https://book.cakephp.org/3.x/appendices/3-6-migration-guide.html",
+        "https://book.cakephp.org/3.x/development/testing.html"
+      ],
+      "enrichedFrom": "jobs-professional-api/2026-07-02-133348/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-professional-api-05",
+      "sourceRepo": "jobs-professional-api",
+      "title": "Controller Endpoint Tests Should Use Real Headers Fixtures And Cache Setup",
+      "criticality": "medium",
+      "classification": "testing",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/tests/TestCase/**/*.php",
+        "php/tests/Fixture/**/*.php"
+      ],
+      "description": "Endpoint tests were added as narrow unit tests only, or skipped the auth headers, fixtures, and cache setup that this repo depends on for realistic controller behavior.",
+      "reviewStatus": "approved",
+      "confidence": "high",
+      "whyThisRuleExists": "This repo validates endpoint behavior through CakePHP integration tests with fixtures, request headers, and cache controls. Tests that avoid those repo-specific dependencies are prone to false confidence.",
+      "localEvidence": [
+        "php/tests/AppIntegrationTestCase.php",
+        "php/tests/TestAppControllerTrait.php",
+        "php/tests/TestCase/Controller/UsersControllerTest.php",
+        "php/tests/Fixture/ApiTipoPermissoesFixture.php"
+      ],
+      "externalSources": [
+        "https://book.cakephp.org/3.x/development/testing.html"
+      ],
+      "enrichedFrom": "jobs-professional-api/2026-07-02-133348/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-professional-api-06",
+      "sourceRepo": "jobs-professional-api",
+      "title": "Persisted User Text Needs Validation And Sanitization At The Boundary",
+      "criticality": "high",
+      "classification": "security",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/src/Model/Table/**/*.php",
+        "php/src/Controller/**/*.php"
+      ],
+      "description": "Persisted free-text fields, or fields that can later be rendered by a client, email, or webview, bypassed table-level validation or sanitization, or introduced new HTML/URL handling without an explicit safe encoding strategy.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Original falava em qualquer conteudo 'stored or returned to clients', amplo demais para API. Restrito a texto livre persistido, campos renderizados depois (cliente/email/webview) e bypass de validacao/sanitizacao de Table.",
+      "confidence": "medium",
+      "whyThisRuleExists": "The repo now has a concrete table-layer pattern for validating and sanitizing persisted canned-message content. Review should preserve that boundary instead of trusting clients or scattering ad hoc sanitization in controllers.",
+      "localEvidence": [
+        "php/src/Model/Table/UserMensagensPredefinidasTable.php",
+        "php/src/Model/Table/AppTable.php",
+        "php/src/Controller/V1/UsersController.php",
+        "php/tests/TestCase/Controller/UsersControllerTest.php"
+      ],
+      "externalSources": [
+        "https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html"
+      ],
+      "enrichedFrom": "jobs-professional-api/2026-07-02-133348/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-professional-api-07",
+      "sourceRepo": "jobs-professional-api",
+      "title": "Browser Callable Write Endpoints Require Explicit CSRF CORS Review",
+      "criticality": "medium",
+      "classification": "security",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/src/Application.php",
+        "php/src/Controller/**/*.php",
+        "php/config/routes.php"
+      ],
+      "description": "A state-changing endpoint reachable from browser clients was added or changed without documenting the intended authentication mode, origin policy, and why the current no-CSRF middleware posture remains safe. Should only trigger when there is concrete evidence the endpoint is reachable from a browser/web frontend, cookie/session, or a cross-origin sensitive flow -- not for every POST/PUT/PATCH/DELETE by default.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Mantido medium; gatilho restrito a evidencia real de alcance por browser em vez de qualquer verbo de escrita.",
+      "confidence": "medium",
+      "whyThisRuleExists": "The app currently disables CSRF middleware and emits permissive CORS headers. That can be acceptable for some header-auth API flows, but browser-callable write endpoints deserve an explicit review instead of inheriting those defaults silently.",
+      "localEvidence": [
+        "php/src/Application.php",
+        "php/src/Controller/AppController.php",
+        "php/src/Controller/Component/ApiRestComponent.php",
+        "php/config/routes.php"
+      ],
+      "externalSources": [
+        "https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html",
+        "https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html"
+      ],
+      "enrichedFrom": "jobs-professional-api/2026-07-02-133348/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-manager-01",
+      "sourceRepo": "jobs-manager",
+      "title": "Avoid Interpolated Raw SQL in Models",
+      "criticality": "high",
+      "classification": "security",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Model/**/*.php"
+      ],
+      "description": "A model change introduced or modified Model::query() SQL that interpolates dynamic values directly into the statement instead of using model methods, updateAll(), or properly escaped parameters.",
+      "reviewStatus": "approved",
+      "confidence": "high",
+      "whyThisRuleExists": "This repo still contains a few raw SQL paths, so injection and correctness risk is concentrated in model-layer query code. New raw SQL should be exceptional and explicitly escaped.",
+      "localEvidence": [
+        "php/app/Model/Notificacao.php",
+        "php/app/Model/Cobranca.php",
+        "php/app/Model/Conta.php"
+      ],
+      "externalSources": [
+        "https://book.cakephp.org/2.x/models/retrieving-your-data.html",
+        "https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html"
+      ],
+      "enrichedFrom": "jobs-manager/2026-07-02-195421/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-manager-02",
+      "sourceRepo": "jobs-manager",
+      "title": "Treat Cache Keys as Part of the Write Contract",
+      "criticality": "medium",
+      "classification": "performance",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Model/**/*.php",
+        "php/app/Controller/**/*.php",
+        "php/app/Config/bootstrap.php"
+      ],
+      "description": "A change added or altered cached reads without using strict cache-miss checks or without invalidating the affected keys when the underlying records change.",
+      "reviewStatus": "approved",
+      "confidence": "high",
+      "whyThisRuleExists": "jobs-manager defines several cache tiers centrally and many models manually coordinate Cache::read(), Cache::write(), and Cache::delete() around account, client, center-cost, and correspondent data.",
+      "localEvidence": [
+        "php/app/Config/bootstrap.php",
+        "php/app/Model/AppModel.php",
+        "php/app/Model/Conta.php",
+        "php/app/Model/ContaCliente.php",
+        "php/app/Model/Correspondente.php",
+        "php/app/Model/CentroCusto.php"
+      ],
+      "externalSources": [
+        "https://book.cakephp.org/2.x/core-libraries/caching.html"
+      ],
+      "enrichedFrom": "jobs-manager/2026-07-02-195421/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-manager-03",
+      "sourceRepo": "jobs-manager",
+      "title": "Preserve Route Order and Use Routing Arrays",
+      "criticality": "medium",
+      "classification": "framework-best-practice",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Config/routes.php"
+      ],
+      "description": "A routes.php change added or moved routes without considering top-to-bottom matching, redirects, or the existing split between API endpoints, current web UI, and legacy redirects.",
+      "reviewStatus": "approved",
+      "confidence": "high",
+      "whyThisRuleExists": "This repo's routes file is dense and mixes API endpoints, browser screens, and large redirect blocks. Ordering mistakes can silently change which action or redirect wins.",
+      "localEvidence": [
+        "php/app/Config/routes.php"
+      ],
+      "externalSources": [
+        "https://book.cakephp.org/2.x/development/routing.html"
+      ],
+      "enrichedFrom": "jobs-manager/2026-07-02-195421/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-manager-04",
+      "sourceRepo": "jobs-manager",
+      "title": "Preserve Domain Event Dispatch and Listener Coverage",
+      "criticality": "high",
+      "classification": "domain-rule",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Model/**/*.php",
+        "php/app/Lib/Event/**/*.php",
+        "php/app/Config/events.php"
+      ],
+      "description": "A change to demand, proposal, or account lifecycle behavior bypassed an existing Cake event, changed a payload shape consumed by a listener without aligning the other side, or altered a webhook/queue side effect without updating the corresponding listener.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Cobranca de teste tirada do centro da regra (virou consequencia, nao o foco). Foco mantido em contrato de evento/listener, nao em cobertura.",
+      "confidence": "high",
+      "whyThisRuleExists": "Demand, proposal, and account workflows already publish Cake events that are consumed by globally attached listeners, including webhook queue publication and other asynchronous side effects.",
+      "localEvidence": [
+        "php/app/Model/AppModel.php",
+        "php/app/Model/GeralContato.php",
+        "php/app/Model/Proposta.php",
+        "php/app/Model/Conta.php",
+        "php/app/Config/events.php",
+        "php/app/Lib/Event/WebhookListener.php",
+        "php/app/Test/Case/Controller/GeralContatosControllerTest.php"
+      ],
+      "externalSources": [
+        "https://book.cakephp.org/2.x/core-libraries/events.html",
+        "https://book.cakephp.org/2.x/development/testing.html"
+      ],
+      "enrichedFrom": "jobs-manager/2026-07-02-195421/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-manager-05",
+      "sourceRepo": "jobs-manager",
+      "title": "Require CakePHP Test Coverage for Behavior Changes",
+      "criticality": "medium",
+      "classification": "testing",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Controller/AppController.php",
+        "php/app/Controller/Api/**/*.php",
+        "php/app/Model/**/*.php",
+        "php/app/Lib/Event/**/*.php",
+        "php/app/Config/events.php"
+      ],
+      "description": "A behavior change in AppController, an auth/global boundary, an API controller, an important model lifecycle path, a listener/webhook/queue flow, or a write path with manual cache handling shipped without updating or adding CakePHP tests and fixtures/fakes (e.g. MessageQueue fake) needed to exercise it.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Reduzido de high generico para medium e restrito as areas de maior risco (AppController, auth/global boundary, API controllers, model lifecycle importante, listeners/webhook/fila, write paths com cache manual), para nao repetir a mesma cobranca ja aprovada em nimda/jobs-site/jobs-professional-api.",
+      "confidence": "high",
+      "whyThisRuleExists": "The repo maintains mirrored Cake test cases and fixtures, and PR CI runs composer test on pull requests. Existing tests already fake infrastructure edges such as the message queue for domain-event paths.",
+      "localEvidence": [
+        ".github/workflows/production.yaml",
+        "php/composer.json",
+        "php/app/Test/Case/Controller/GeralContatosControllerTest.php",
+        "php/app/Test/Case/Model/ContaTest.php",
+        "php/app/Test/Fixture"
+      ],
+      "externalSources": [
+        "https://book.cakephp.org/2.x/development/testing.html",
+        "https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows"
+      ],
+      "enrichedFrom": "jobs-manager/2026-07-02-195421/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-manager-06",
+      "sourceRepo": "jobs-manager",
+      "title": "CakePHP 2 File/Class Naming Mismatch",
+      "criticality": "high",
+      "classification": "framework-best-practice",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Controller/**/*.php",
+        "php/app/Model/**/*.php",
+        "php/app/Lib/**/*.php",
+        "php/app/Controller/Component/**/*.php"
+      ],
+      "description": "In CakePHP 2, the filename must exactly match the class name including case. A mismatch causes silent load failures. Bad: file `emailSender.php` containing `class EmailSender`. Good: file `EmailSender.php` containing `class EmailSender`.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Movida da baseline default para repo-specific porque esta cobranca so faz sentido nos repos legados em CakePHP 2.",
+      "confidence": "high",
+      "whyThisRuleExists": "CakePHP 2 resolves classes from filenames, so a filename/class-name case mismatch fails silently at load time instead of erroring. AppController.php and AppModel.php show the canonical naming this repo follows.",
+      "localEvidence": [
+        "php/app/Controller/AppController.php",
+        "php/app/Model/AppModel.php"
+      ],
+      "externalSources": [
+        "https://book.cakephp.org/2.x/en/conventions.html"
+      ],
+      "enrichedFrom": "manual (evidence verified in ProjetosElevia working copies, 2026-07-06)"
+    },
+    {
+      "id": "jobs-manager-07",
+      "sourceRepo": "jobs-manager",
+      "title": "CakePHP 2 Undeclared $uses or $components",
+      "criticality": "high",
+      "classification": "framework-best-practice",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Controller/**/*.php"
+      ],
+      "description": "A Model or Component is used inside a CakePHP 2 controller without being declared in $uses or $components. This causes a fatal error at runtime. Bad: calling `$this->Payment->save()` without `public $uses = [\"Payment\"]`. Good: declare every Model in `$uses` and every Component in `$components` before using them.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Movida da baseline default para repo-specific porque esta cobranca so faz sentido nos repos legados em CakePHP 2.",
+      "confidence": "high",
+      "whyThisRuleExists": "CakePHP 2 controllers only get magic model/component properties that are declared in $uses/$components (or loaded explicitly); calling an undeclared one is a runtime fatal. The evidence files show the declaration pattern this repo follows.",
+      "localEvidence": [
+        "php/app/Controller/AppController.php",
+        "php/app/Controller/CentroCustosController.php"
+      ],
+      "externalSources": [
+        "https://book.cakephp.org/2.x/controllers.html"
+      ],
+      "enrichedFrom": "manual (evidence verified in ProjetosElevia working copies, 2026-07-06)"
+    },
+    {
+      "id": "jobs-database-01",
+      "sourceRepo": "jobs-database",
+      "title": "Do Not Implement Schema Changes by Editing Snapshot SQL",
+      "criticality": "high",
+      "classification": "local-convention",
+      "targetLanguage": "sql",
+      "fileGlobs": [
+        "database-image/sql/**/*.sql"
+      ],
+      "description": "A schema or domain-data change was introduced by hand in `database-image/sql/**` instead of shipping a Phinx migration under `php/db/migrations`, except for generated snapshot output produced by the repo workflow.",
+      "reviewStatus": "approved",
+      "confidence": "high",
+      "whyThisRuleExists": "This repo treats Phinx migrations as the source of truth and treats the SQL tree under database-image as a derived bootstrap snapshot.",
+      "localEvidence": [
+        "README.md",
+        "database-image/configure.sh",
+        "database-image/scripts/compiler.sh",
+        ".github/workflows/production.yaml"
+      ],
+      "externalSources": [
+        "https://book.cakephp.org/phinx/0/en/migrations.html"
+      ],
+      "enrichedFrom": "jobs-database/2026-07-02-194312/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-database-02",
+      "sourceRepo": "jobs-database",
+      "title": "Large-Table Index Migrations Must Be Operationally Defensive",
+      "criticality": "medium",
+      "classification": "operations",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/db/migrations/**/*.php"
+      ],
+      "description": "A migration that adds or drops indexes on hot or large tables omits existence checks, explicit `up()` and `down()` methods, or long-running timeout/session handling before issuing raw `ALTER TABLE` statements.",
+      "reviewStatus": "approved",
+      "confidence": "medium",
+      "whyThisRuleExists": "This repo already contains production-oriented index migrations that guard existence and relax timeout limits before DDL, which matches MySQL's concurrency caveats around ALTER TABLE work.",
+      "localEvidence": [
+        "php/db/migrations/20260518135329_add_manual_production_indexes.php",
+        "php/db/migrations/20260520002228_add_idx_cc_corresp_arq_ultmsg_id_gci_status_to_correspondente_contatos.php"
+      ],
+      "externalSources": [
+        "https://dev.mysql.com/doc/refman/8.4/en/alter-table.html"
+      ],
+      "enrichedFrom": "jobs-database/2026-07-02-194312/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-database-03",
+      "sourceRepo": "jobs-database",
+      "title": "Workflow Changes Must Preserve Least-Privilege Credentials and Permissions",
+      "criticality": "high",
+      "classification": "security",
+      "targetLanguage": "yaml",
+      "fileGlobs": [
+        ".github/workflows/**/*.yaml",
+        ".github/workflows/**/*.yml"
+      ],
+      "description": "A GitHub Actions workflow change hardcodes credentials, removes secret or OIDC usage, or broadens `permissions` beyond what the job actually needs for checkout, AWS auth, and deployment work.",
+      "reviewStatus": "approved",
+      "confidence": "high",
+      "whyThisRuleExists": "This repo's production workflow already uses explicit job permissions and AWS OIDC credential setup, and GitHub recommends least-privilege token scopes and secret-backed credentials for workflows.",
+      "localEvidence": [
+        ".github/workflows/production.yaml"
+      ],
+      "externalSources": [
+        "https://docs.github.com/en/actions/reference/security/secure-use",
+        "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax"
+      ],
+      "enrichedFrom": "jobs-database/2026-07-02-194312/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-database-04",
+      "sourceRepo": "jobs-database",
+      "title": "Irreversible Or Data-Changing Migrations Need An Explicit Rollback Strategy",
+      "criticality": "medium",
+      "classification": "framework-best-practice",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/db/migrations/**/*.php"
+      ],
+      "description": "A migration containing DML, raw SQL, or an operation that is not naturally reversible does not document an explicit safety strategy for reversal (accepted patterns: up()/down(), change() with a clear guard, or an explicitly documented no-op down() when reverting would destroy data).",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Titulo/regra original exigia up()/down() como obrigacao absoluta, mas o repo tem migrations recentes legitimas usando change() com save()/isMigratingUp(). Ajustado para exigir estrategia explicita de seguranca, nao um formato fixo. Separado da regra de seeding para nao duplicar.",
+      "confidence": "high",
+      "whyThisRuleExists": "This repo already uses explicit `up()` and `down()` methods for data migrations and operational SQL, and Phinx documents that nonreversible work should avoid the generic `change()` path.",
+      "localEvidence": [
+        "php/db/migrations/20260622124500_add_api_tipo_permissoes_user_mensagens_predefinidas.php",
+        "php/db/migrations/20260508120000_add_coupon_id_to_planos_and_pix_to_pagamento_formas.php",
+        "php/db/migrations/20260531222439_expand_cnpj_fields_for_alphanumeric.php"
+      ],
+      "externalSources": [
+        "https://book.cakephp.org/phinx/0/en/migrations.html"
+      ],
+      "enrichedFrom": "jobs-database/2026-07-02-194312/02-rule-suggestions.json",
+      "renamedFrom": "Raw SQL, DML, and Irreversible Work Should Use up() and down()"
+    },
+    {
+      "id": "jobs-database-05",
+      "sourceRepo": "jobs-database",
+      "title": "New Tables Must Declare a Primary Key and Supporting Relationship Indexes",
+      "criticality": "high",
+      "classification": "performance",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/db/migrations/**/*.php"
+      ],
+      "description": "A new table was added without a primary key (default from the framework or custom) or without a foreign key having reasonable index support (dedicated or composite) matching the repo's real access pattern.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Trocado 'primary key explicita' por 'primary key presente' (o repo usa tanto PK default do Phinx quanto customizada). Nao exige mais indice dedicado por relacao quando indice composto ja cobre.",
+      "confidence": "high",
+      "whyThisRuleExists": "Representative table-creation migrations in this repo define primary keys, indexes, and foreign keys explicitly, and MySQL's InnoDB guidance favors explicit primary keys plus indexed foreign-key columns.",
+      "localEvidence": [
+        "php/db/migrations/20260622105105_create_table_user_mensagens_predefinidas.php",
+        "php/db/migrations/20260417120000_create_webhooks_table.php"
+      ],
+      "externalSources": [
+        "https://book.cakephp.org/phinx/0/en/migrations.html",
+        "https://dev.mysql.com/doc/refman/8.4/en/create-table-foreign-keys.html",
+        "https://dev.mysql.com/doc/refman/8.4/en/innodb-index-types.html"
+      ],
+      "enrichedFrom": "jobs-database/2026-07-02-194312/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-database-06",
+      "sourceRepo": "jobs-database",
+      "title": "Shared Permission Or Lookup Data Seeding Must Be Idempotent and Reversible",
+      "criticality": "medium",
+      "classification": "domain-rule",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/db/migrations/**/*.php"
+      ],
+      "description": "A migration seeding rows into shared permission, lookup, or domain tables lacks idempotency (e.g. `WHERE NOT EXISTS` or equivalent prior check) or a deterministic cleanup path in `down()` for environments where the migration may be reapplied with drift.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Restrito a tabelas compartilhadas de permissao/lookup/dominio (nao qualquer insert). Deve complementar, nao duplicar, a regra de jobs-professional-api sobre endpoint/rota/teste -- aqui o foco e a migration da permissao, la e o wiring/autorizacao do endpoint.",
+      "confidence": "medium",
+      "whyThisRuleExists": "Recent repo migrations that seed permission rows use `WHERE NOT EXISTS` style guards and pair inserts with explicit delete logic, which reduces duplicate-row risk across replays and environment drift.",
+      "localEvidence": [
+        "php/db/migrations/20260622124500_add_api_tipo_permissoes_user_mensagens_predefinidas.php",
+        "php/db/migrations/20260508120000_add_coupon_id_to_planos_and_pix_to_pagamento_formas.php",
+        "php/db/migrations/20260331165941_add_backend_api_growth_hack_api_key.php"
+      ],
+      "externalSources": [
+        "https://book.cakephp.org/phinx/0/en/migrations.html"
+      ],
+      "enrichedFrom": "jobs-database/2026-07-02-194312/02-rule-suggestions.json",
+      "renamedFrom": "Raw Data Seeding in Migrations Should Be Idempotent and Reversible"
+    },
+    {
+      "id": "jobs-database-07",
+      "sourceRepo": "jobs-database",
+      "title": "planos Table Requires Raw SQL for ALTER",
+      "criticality": "high",
+      "classification": "local-convention",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/db/migrations/**/*.php"
+      ],
+      "description": "The `planos` table contains legacy zero-date values that can make Phinx schema-builder alterations fail silently or error. Changes that alter `planos` should preserve the established raw-SQL pattern (for example the existing relaxed SQL-mode wrapper) instead of switching to `changeColumn()`, `addColumn()`, or similar builder calls on that table.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Movida da baseline default para jobs-database, onde a evidencia real ja aparece nas migrations que usam raw SQL e SQL mode relaxado para `planos`.",
+      "confidence": "high",
+      "whyThisRuleExists": "The planos table carries legacy zero-date values that make Phinx schema-builder alterations fail; the existing migration alters planos through raw SQL ($this->execute with ALTER TABLE planos) and new changes must preserve that pattern.",
+      "localEvidence": [
+        "php/db/migrations/20260508120000_add_coupon_id_to_planos_and_pix_to_pagamento_formas.php"
+      ],
+      "externalSources": [],
+      "enrichedFrom": "manual (evidence verified in ProjetosElevia working copies, 2026-07-06)"
+    },
+    {
+      "id": "jobs-chat-01",
+      "sourceRepo": "jobs-chat",
+      "title": "Protect V1 Routes with Shared Middleware and Direct-Access Guards",
+      "criticality": "high",
+      "classification": "security",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/routes/**/*.php",
+        "php/bootstrap/**/*.php",
+        "php/app/Http/Middleware/**/*.php",
+        "php/app/Services/**/*.php"
+      ],
+      "description": "A new business endpoint under `v1` bypassed the shared auth/observability middleware or exposed a privileged system-only flow without preserving the current `acessoDireto` checks and caller-facing 401/404 behavior.",
+      "reviewStatus": "approved",
+      "confidence": "high",
+      "whyThisRuleExists": "Business routes are grouped behind `auth` and `newrelic`, while privileged flows rely on the high-trust `acessoDireto` flag derived from API-key type.",
+      "localEvidence": [
+        "php/routes/web.php",
+        "php/bootstrap/app.php",
+        "php/app/Http/Middleware/Authenticate.php",
+        "php/app/Services/Demanda.php",
+        "php/app/Services/Mensagem.php"
+      ],
+      "externalSources": [
+        "https://lumen.laravel.com/docs/8.x/routing",
+        "https://lumen.laravel.com/docs/8.x/controllers"
+      ],
+      "enrichedFrom": "jobs-chat/2026-07-02-202005/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-chat-02",
+      "sourceRepo": "jobs-chat",
+      "title": "Keep SQL-Backed Changes Compatible with the SQLite Test Bootstrap",
+      "criticality": "high",
+      "classification": "testing",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Models/**/*.php",
+        "php/app/Console/Commands/**/*.php",
+        "php/database/**/*.php",
+        "php/tests/**/*.php",
+        "php/phpunit.xml"
+      ],
+      "description": "A schema-dependent or Eloquent-backed change broke the `banco-para-sqlite:executar` mirror step, fixture seeding, or the SQLite assumptions used by PHPUnit and CI.",
+      "reviewStatus": "approved",
+      "confidence": "high",
+      "whyThisRuleExists": "CI and local tests rely on a generated SQLite schema plus deterministic seeds for SQL-backed entities even though production behavior also depends on Mongo and external integrations.",
+      "localEvidence": [
+        "php/composer.json",
+        "php/phpunit.xml",
+        "php/app/Console/Commands/BancoParaSqlite.php",
+        "php/database/seeds/DatabaseSeeder.php",
+        "php/database/seeds/TestesSeeder.php",
+        "php/tests/TestCase.php"
+      ],
+      "externalSources": [
+        "https://lumen.laravel.com/docs/8.x/testing"
+      ],
+      "enrichedFrom": "jobs-chat/2026-07-02-202005/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-chat-03",
+      "sourceRepo": "jobs-chat",
+      "title": "Preserve Webhook Envelope Shape and Non-Throwing Publish Semantics",
+      "criticality": "medium",
+      "classification": "operations",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Services/**/*.php",
+        "php/config/**/*.php",
+        "php/tests/**/*.php"
+      ],
+      "description": "A webhook or queue publication changed its JSON envelope, queue selection, account routing, conditional publish gate, or failure behavior without explicit tests and logging expectations.",
+      "reviewStatus": "approved",
+      "confidence": "high",
+      "whyThisRuleExists": "The current webhook publisher builds a specific `evento` / `conta_id` / `payload` envelope, logs and returns `false` on failures, and is already covered by unit tests that assert the exact message shape.",
+      "localEvidence": [
+        "php/app/Services/WebhookPublisher.php",
+        "php/app/Services/Mensagem.php",
+        "php/config/queue.php",
+        "php/tests/Unit/WebhookPublisherTest.php",
+        "php/tests/MensagemControllerTest.php"
+      ],
+      "externalSources": [
+        "https://lumen.laravel.com/docs/8.x/testing",
+        "https://lumen.laravel.com/docs/8.x/configuration"
+      ],
+      "enrichedFrom": "jobs-chat/2026-07-02-202005/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-chat-04",
+      "sourceRepo": "jobs-chat",
+      "title": "Validate, Sanitize, and Whitelist Message Payloads Before Persistence",
+      "criticality": "high",
+      "classification": "security",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Services/Mensagem.php",
+        "php/app/Http/Controllers/V1/MensagemController.php",
+        "php/app/Models/Mensagem.php",
+        "php/app/helpers.php"
+      ],
+      "description": "Incoming message-related request fields were saved or forwarded without using the existing validation rules, HTML sanitization, allowed-field whitelist, file checks, or direct-access restrictions already encoded in the message write boundary.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "fileGlobs original amplo demais (php/app/Services/**, php/app/Models/**, php/app/Http/Controllers/**, php/app/helpers.php), podia comentar em servicos/models/controllers fora do write path de mensagem. Restrito ao boundary real de persistencia de mensagem.",
+      "confidence": "high",
+      "whyThisRuleExists": "The core message-post flow validates payloads, sanitizes user HTML, restricts system-only fields, and whitelists persisted attributes before writing to Mongo or invoking downstream side effects.",
+      "localEvidence": [
+        "php/app/Services/Mensagem.php",
+        "php/app/Models/Mensagem.php",
+        "php/app/helpers.php",
+        "php/config/geral.php",
+        "php/app/Http/Middleware/Authenticate.php"
+      ],
+      "externalSources": [
+        "https://lumen.laravel.com/docs/8.x/validation",
+        "https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html"
+      ],
+      "enrichedFrom": "jobs-chat/2026-07-02-202005/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-chat-05",
+      "sourceRepo": "jobs-chat",
+      "title": "Mock External Adapters in Tests and Assert Side-Effect Contracts",
+      "criticality": "medium",
+      "classification": "testing",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/tests/**/*.php",
+        "php/app/Services/**/*.php",
+        "php/app/Models/**/*.php"
+      ],
+      "description": "A change to an adapter or side-effecting service (Mongo adapters, background writers, notifications, S3, RabbitMQ) shipped without focused tests that replace those collaborators with mocks and verify the expected contract. When the diff specifically touches WebhookPublisher, the webhook-envelope rule (jobs-chat-03) should be the primary rule, not this one.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Restrito a mudancas que cruzam adaptadores externos ou efeitos assincronos, evitando cobranca automatica para qualquer alteracao de service/model e sobreposicao com a regra de webhook.",
+      "confidence": "high",
+      "whyThisRuleExists": "The existing suite isolates integration-heavy logic with Mockery and container overrides instead of depending on live Mongo, MQ, or background command execution during every controller test.",
+      "localEvidence": [
+        "php/tests/MensagemControllerTest.php",
+        "php/tests/DemandaControllerTest.php",
+        "php/tests/Unit/WebhookPublisherTest.php",
+        "php/tests/TestCase.php",
+        "php/app/Services/WebhookPublisher.php"
+      ],
+      "externalSources": [
+        "https://lumen.laravel.com/docs/8.x/testing",
+        "https://lumen.laravel.com/docs/8.x/container"
+      ],
+      "enrichedFrom": "jobs-chat/2026-07-02-202005/02-rule-suggestions.json"
+    },
+    {
+      "id": "backend-api-01",
+      "sourceRepo": "backend-api",
+      "title": "Single Transaction Per Multi-Model Write",
+      "criticality": "high",
+      "classification": "local-convention",
+      "targetLanguage": "python",
+      "fileGlobs": [
+        "app/services/**/*.py",
+        "app/models/base/**/*.py"
+      ],
+      "description": "A service change that mutates multiple SQL-backed models should open one transaction and pass the shared connection into each participating model with `set_connection`, rather than letting each model write independently.",
+      "reviewStatus": "approved",
+      "confidence": "high",
+      "whyThisRuleExists": "Core payment, billing, subscription, organization, customer, withdraw, and prospecting flows rely on explicit connection sharing to keep atomic writes consistent.",
+      "localEvidence": [
+        "app/services/customer.py",
+        "app/services/payment.py",
+        "app/services/billing.py",
+        "app/models/base/postgres.py"
+      ],
+      "externalSources": [
+        "https://docs.sqlalchemy.org/en/13/core/connections.html"
+      ],
+      "enrichedFrom": "backend-api/2026-07-02-200953/02-rule-suggestions.json"
+    },
+    {
+      "id": "backend-api-02",
+      "sourceRepo": "backend-api",
+      "title": "Sanitize Prospecting Intake Before Prompting Or Persisting",
+      "criticality": "high",
+      "classification": "security",
+      "targetLanguage": "python",
+      "fileGlobs": [
+        "app/services/prospecting_intake.py",
+        "app/models/validation/prospecting.py",
+        "app/libs/intake_sanitizer.py",
+        "app/libs/llm/**/*.py",
+        "tests/app/libs/test_intake_sanitizer.py"
+      ],
+      "description": "Public intake text or LLM prompt material must be sanitized with `sanitize_intake_text` or a reviewed equivalent before validation, storage, summarization, or prompt assembly.",
+      "reviewStatus": "approved",
+      "confidence": "high",
+      "whyThisRuleExists": "The prospecting flow already strips HTML, control characters, and prompt-injection lines before user text reaches guardrailed LLM calls or stored summaries.",
+      "localEvidence": [
+        "app/libs/intake_sanitizer.py",
+        "app/models/validation/prospecting.py",
+        "app/services/prospecting_intake.py",
+        "app/libs/llm/providers/litellm.py",
+        "tests/app/libs/test_intake_sanitizer.py",
+        "tests/app/services/test_prospecting_intake_service.py"
+      ],
+      "externalSources": [
+        "https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html",
+        "https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html",
+        "https://cheatsheetseries.owasp.org/cheatsheets/LLM_Prompt_Injection_Prevention_Cheat_Sheet.html"
+      ],
+      "enrichedFrom": "backend-api/2026-07-02-200953/02-rule-suggestions.json"
+    },
+    {
+      "id": "backend-api-03",
+      "sourceRepo": "backend-api",
+      "title": "Router-Layer Requests Must Use validate_data and the Shared Response Wrapper",
+      "criticality": "high",
+      "classification": "local-convention",
+      "targetLanguage": "python",
+      "fileGlobs": [
+        "app/http/routers/**/*.py",
+        "app/models/validation/**/*.py"
+      ],
+      "description": "A change in `app/http/routers/` parses JSON manually, validates ad hoc, or shapes the response outside the shared pattern instead of using `@validate_data`, contracts in `app/models/validation`, and the shared wrapper in `app/http/response.py`.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Titulo/framing original ('Thin Routers') puxava para a familia generica de 'controller fino' ja repetida em varios repos. Estreitado para o boundary local especifico (validate_data + Pydantic + Response), o que deixa de competir com jobs-professional-api/jobs-chat/jobs-manager.",
+      "confidence": "high",
+      "whyThisRuleExists": "The HTTP layer is consistently thin: routes authenticate, validate, call services, and return the shared Response wrapper.",
+      "localEvidence": [
+        "app/http/routers/helpers.py",
+        "app/http/routers/customer.py",
+        "app/http/routers/v1.py",
+        "app/http/response.py",
+        "app/models/validation/customer.py"
+      ],
+      "externalSources": [
+        "https://starlette.dev/routing/",
+        "https://pydantic.dev/docs/validation/1.10/usage/validators/",
+        "https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html"
+      ],
+      "enrichedFrom": "backend-api/2026-07-02-200953/02-rule-suggestions.json",
+      "renamedFrom": "Thin Routers With Pydantic Contracts"
+    },
+    {
+      "id": "backend-api-04",
+      "sourceRepo": "backend-api",
+      "title": "Preserve Mongo Change Logs For Mutable SQL Models",
+      "criticality": "medium",
+      "classification": "local-convention",
+      "targetLanguage": "python",
+      "fileGlobs": [
+        "app/models/**/*.py"
+      ],
+      "description": "A new Postgres model, a change to a model's base class/inheritance, or a new mutable business entity should continue to inherit from `SqlWithChangeLogs` unless it is intentionally read-only reference data (`SqlModel`), intentionally Mongo-native, or an explicitly reviewed exception (e.g. `ApiKey`).",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Texto original falava em 'new or materially changed mutable Postgres models', amplo demais e podia comentar em qualquer edicao de model. Restrito a criacao de model novo, mudanca de heranca/base class, ou nova entidade mutavel sem trilha de log; excecoes explicitadas.",
+      "confidence": "medium",
+      "whyThisRuleExists": "Most business entities mirror inserts and updates into `<table>_logs` Mongo collections, while reference tables use `SqlModel` and a small set of entities are Mongo-only.",
+      "localEvidence": [
+        "app/models/base/sql_with_change_logs.py",
+        "app/models/customer.py",
+        "app/models/billing.py",
+        "app/models/domain.py",
+        "app/models/payment_webhook.py"
+      ],
+      "externalSources": [],
+      "enrichedFrom": "backend-api/2026-07-02-200953/02-rule-suggestions.json"
+    },
+    {
+      "id": "backend-api-05",
+      "sourceRepo": "backend-api",
+      "title": "New Credentials and Sensitive Endpoints Must Follow the Repo's Config Flow",
+      "criticality": "high",
+      "classification": "security",
+      "targetLanguage": "mixed",
+      "fileGlobs": [
+        "app/**/*.py",
+        "aws/**/*.sh",
+        ".github/workflows/**/*.yaml"
+      ],
+      "description": "A new credential, sensitive endpoint, or operational integration flag should enter through `app/config.py`, have coherent local dev wiring via `.env.dev` or compose, and, when applicable in production, be mapped through `aws/secrets.sh` and workflows/task definitions -- not hardcoded in a service, task, or lib.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Regra original era generica de 'nao hardcode segredo', quase identica a de nimda/jobs-site. Ancorada no fluxo real de config deste repo especifico (config.py + .env.dev + aws/secrets.sh) para deixar de ser mais uma versao redundante.",
+      "confidence": "medium",
+      "whyThisRuleExists": "This repo already centralizes most sensitive configuration in environment variables and uses AWS Secrets Manager in deployment flows, so new plaintext secrets would cut across the existing operational model.",
+      "localEvidence": [
+        "app/config.py",
+        ".github/workflows/production.yaml",
+        ".github/workflows/staging.yaml",
+        ".env.dev"
+      ],
+      "externalSources": [
+        "https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html"
+      ],
+      "enrichedFrom": "backend-api/2026-07-02-200953/02-rule-suggestions.json",
+      "renamedFrom": "Do Not Introduce Plaintext Secrets In Tracked Source"
+    },
+    {
+      "id": "backend-api-06",
+      "sourceRepo": "backend-api",
+      "title": "Ship Focused Pytest Coverage With Higher-Risk Service And Model Changes",
+      "criticality": "medium",
+      "classification": "testing",
+      "targetLanguage": "python",
+      "fileGlobs": [
+        "app/services/**/*.py",
+        "app/models/**/*.py",
+        "app/libs/**/*.py",
+        "tests/app/**/*.py"
+      ],
+      "description": "Changes to transactional multi-model services, Celery/external-provider flows, prospecting/LLM logic, or data-shaping/sanitization helpers should add or update focused pytest coverage using the repo's real testing style (`MockPG`, `ModelMock`, fake gateways, deterministic provider mocks). When the change clearly falls under backend-api-01 or backend-api-02, those rules should be the primary comment, not this one.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Reduzida de cobranca ampla para escopo de maior risco, evitando redundancia com as regras de cobertura ja calibradas em nimda/jobs-manager.",
+      "confidence": "high",
+      "whyThisRuleExists": "The repo already carries broad pytest coverage with mocked database and provider patterns for service, validation, sanitizer, and LLM behavior.",
+      "localEvidence": [
+        "requirements-test.txt",
+        "tests/app/services/test_customer_service.py",
+        "tests/app/services/test_prospecting_intake_service.py",
+        "tests/app/libs/llm/providers/test_litellm.py",
+        "tests/app/libs/test_intake_sanitizer.py"
+      ],
+      "externalSources": [],
+      "enrichedFrom": "backend-api/2026-07-02-200953/02-rule-suggestions.json",
+      "renamedFrom": "Ship Focused Pytest Coverage With Service And Model Changes"
+    },
+    {
+      "id": "jc-webapp-01",
+      "sourceRepo": "jc-webapp",
+      "title": "Use TanStack Query for Async Client Server State",
+      "criticality": "high",
+      "classification": "framework-best-practice",
+      "targetLanguage": "typescript",
+      "fileGlobs": [
+        "app/providers.tsx",
+        "features/**/*.{ts,tsx}",
+        "hooks/**/*.ts"
+      ],
+      "description": "Client-side async server state was implemented with ad hoc useEffect/fetch or stored in arbitrary React state/context instead of using TanStack Query queries, mutations, and cache invalidation patterns already established in the repo.",
+      "reviewStatus": "approved",
+      "confidence": "high",
+      "whyThisRuleExists": "This repo standardizes on TanStack Query for client-side server state while leaving server-only data in Server Components, server actions, and route handlers.",
+      "localEvidence": [
+        "README.md",
+        "app/providers.tsx",
+        "features/contractor/demands/shell/hooks/use-demands-view.ts",
+        "features/contractor/demand-chat/shell/hooks/use-demand-chat.ts"
+      ],
+      "externalSources": [
+        "https://tanstack.com/query/v5/docs/framework/react/reference/QueryClientProvider",
+        "https://tanstack.com/query/v5/docs/framework/react/guides/advanced-ssr"
+      ],
+      "enrichedFrom": "jc-webapp/20260702-183430/02-rule-suggestions.json"
+    },
+    {
+      "id": "jc-webapp-02",
+      "sourceRepo": "jc-webapp",
+      "title": "Keep the Contractor Realtime Router Transport-Only",
+      "criticality": "high",
+      "classification": "domain-rule",
+      "targetLanguage": "typescript",
+      "fileGlobs": [
+        "features/conta/contractor/realtime/**/*.{ts,tsx}",
+        "lib/jobs-notifications/**/*.ts"
+      ],
+      "description": "Code in the contractor realtime layer started storing domain entities or performing feature-specific cache invalidation directly instead of emitting normalized events and delegating reactions to feature code.",
+      "reviewStatus": "approved",
+      "confidence": "high",
+      "whyThisRuleExists": "The live-io architecture deliberately separates transport, normalized event routing, and per-feature reactions so socket plumbing does not become a second domain store.",
+      "localEvidence": [
+        "AGENTS.md",
+        "features/conta/contractor/realtime/contractor-realtime-router.ts",
+        "features/conta/contractor/realtime/use-contractor-realtime.ts",
+        "features/conta/contractor/realtime/contractor-realtime-context.tsx",
+        "features/conta/contractor/realtime/contractor-realtime-router.test.ts",
+        "lib/jobs-notifications/client.ts",
+        "lib/jobs-notifications/events.ts"
+      ],
+      "externalSources": [],
+      "enrichedFrom": "jc-webapp/20260702-183430/02-rule-suggestions.json"
+    },
+    {
+      "id": "jc-webapp-03",
+      "sourceRepo": "jc-webapp",
+      "title": "Keep Legacy Manager and Jobs-Chat Auth on the Server",
+      "criticality": "high",
+      "classification": "security",
+      "targetLanguage": "typescript",
+      "fileGlobs": [
+        "app/api/**/*.ts",
+        "features/**/*action*.ts",
+        "lib/jobs-chat/**/*.ts",
+        "next.config.ts"
+      ],
+      "description": "A change moved authenticated legacy integration calls or credential resolution into client code, exposed server-only env vars or tokens, or stopped forwarding the server-side session context that the legacy backends expect.",
+      "reviewStatus": "approved",
+      "confidence": "high",
+      "whyThisRuleExists": "The repo uses server actions, rewrites, and route handlers as a BFF layer so CAKEPHP cookies and jobs-chat credentials never become browser-owned.",
+      "localEvidence": [
+        "features/conta/contractor/actions.ts",
+        "app/api/chat/[...path]/route.ts",
+        "lib/jobs-chat/proxy-request.ts",
+        "lib/jobs-chat/resolve-credentials.ts",
+        ".env.example",
+        "next.config.ts",
+        "proxy.ts"
+      ],
+      "externalSources": [
+        "https://nextjs.org/docs/app/getting-started/route-handlers",
+        "https://nextjs.org/docs/app/guides/environment-variables"
+      ],
+      "enrichedFrom": "jc-webapp/20260702-183430/02-rule-suggestions.json"
+    },
+    {
+      "id": "jc-webapp-04",
+      "sourceRepo": "jc-webapp",
+      "title": "Treat NEXT_PUBLIC Vars and Standalone Output as a Build-Time Contract",
+      "criticality": "high",
+      "classification": "operations",
+      "targetLanguage": "configuration",
+      "fileGlobs": [
+        "next.config.ts",
+        "Dockerfile",
+        "Dockerfile.dev",
+        "compose*.yaml",
+        ".github/workflows/*.yaml",
+        ".env.example"
+      ],
+      "description": "A config or runtime change assumed NEXT_PUBLIC variables can vary without rebuild, or added runtime files and dependencies without considering standalone tracing and Docker copy behavior.",
+      "reviewStatus": "approved",
+      "confidence": "high",
+      "whyThisRuleExists": "The repo deploys with next build standalone Docker images, and environment correctness for staging and prod depends on build-time public variables plus traced runtime assets.",
+      "localEvidence": [
+        "README.md",
+        "next.config.ts",
+        "Dockerfile",
+        "Dockerfile.dev",
+        "compose.staging.yaml",
+        "compose.prod.yaml",
+        ".env.example",
+        ".github/workflows/production.yaml",
+        ".github/workflows/staging.yaml"
+      ],
+      "externalSources": [
+        "https://nextjs.org/docs/app/guides/environment-variables",
+        "https://nextjs.org/docs/pages/api-reference/config/next-config-js/output"
+      ],
+      "enrichedFrom": "jc-webapp/20260702-183430/02-rule-suggestions.json"
+    },
+    {
+      "id": "jc-webapp-05",
+      "sourceRepo": "jc-webapp",
+      "title": "Public UX in Portuguese, Technical Code in English",
+      "criticality": "medium",
+      "classification": "local-convention",
+      "targetLanguage": "typescript",
+      "fileGlobs": [
+        "app/**/*.{ts,tsx}",
+        "components/**/*.{ts,tsx}",
+        "features/**/*.{ts,tsx}"
+      ],
+      "description": "New user-facing text/routes in `app/**`, `components/**`, or `features/**` should be in Brazilian Portuguese, and new code identifiers (components, hooks, helpers, types) should be in English. Do not flag test descriptions, already-stabilized legacy names, or fields inherited from legacy backend payloads.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Restrito a texto visivel ao usuario e nomes de codigo novos; explicitamente exclui nitpick em descricao de teste, nomes historicos e campos herdados de payload legado.",
+      "confidence": "high",
+      "whyThisRuleExists": "The repo draws a clear boundary between Brazilian Portuguese product surfaces and English technical implementation while preserving legacy contract names from the backend.",
+      "localEvidence": [
+        "AGENTS.md",
+        "README.md",
+        "app/(auth)/contratante/demandas/page.tsx",
+        "app/(auth)/contratante/demandas/[id]/chat/page.tsx",
+        "features/contractor/demands/shell/hooks/use-demands-view.ts",
+        "features/contractor/demand-chat/shell/hooks/use-demand-chat.ts"
+      ],
+      "externalSources": [],
+      "enrichedFrom": "jc-webapp/20260702-183430/02-rule-suggestions.json"
+    },
+    {
+      "id": "jc-webapp-06",
+      "sourceRepo": "jc-webapp",
+      "title": "Hook-Orchestrated State, View-Only Components",
+      "criticality": "high",
+      "classification": "local-convention",
+      "targetLanguage": "typescript",
+      "fileGlobs": [
+        "components/**/*.tsx",
+        "features/**/*.tsx",
+        "hooks/**/*.ts"
+      ],
+      "description": "A change moved domain orchestration, async flow, or composition of multiple hooks directly into a view component instead of a dedicated orchestrator hook. Strictly local UI state (e.g. a toggle, an open/closed flag) remains acceptable in components. Main hotspots: demands shell, demand-chat shell, contractor header/notifications, and components that already depend on orchestrator hooks.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Original podia comentar contra qualquer useState/useEffect local; ajustado para so disparar quando orquestracao de dominio/async migra para o componente de view. Deixa de sobrepor 'Keep App Router Files Thin' (que foi descartada).",
+      "confidence": "high",
+      "whyThisRuleExists": "The repo explicitly prefers small hooks plus orchestrator hooks so JSX files stay reviewable and side effects stay testable.",
+      "localEvidence": [
+        "AGENTS.md",
+        "features/contractor/demands/shell/hooks/use-demands-view.ts",
+        "features/contractor/demand-chat/shell/hooks/use-demand-chat.ts",
+        "features/contractor/demands/shell/ui/view.tsx",
+        "app/providers.tsx"
+      ],
+      "externalSources": [],
+      "enrichedFrom": "jc-webapp/20260702-183430/02-rule-suggestions.json"
+    },
+    {
+      "id": "jc-webapp-07",
+      "sourceRepo": "jc-webapp",
+      "title": "Place Components by Scope: primitives, common, then feature",
+      "criticality": "medium",
+      "classification": "local-convention",
+      "targetLanguage": "typescript",
+      "fileGlobs": [
+        "components/**/*.tsx",
+        "features/**/*.tsx"
+      ],
+      "description": "Comment mainly on extraction/reuse decisions: UI that is clearly feature-local being promoted too early to `components/common`, business-specific UI landing in `components/primitives`, or a new shared component being born already coupled to a single feature's payload or flow.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Reformulada para focar em decisao de extracao/reuso, nao em estetica de estrutura de pasta.",
+      "confidence": "high",
+      "whyThisRuleExists": "Review stays predictable and reuse remains intentional when low-level design-system code, cross-feature composition, and domain-specific UI live in distinct layers.",
+      "localEvidence": [
+        "AGENTS.md",
+        "README.md",
+        "components.json",
+        "components/primitives/button.tsx",
+        "components/common/header.tsx",
+        "features/contractor/demands/shell/ui/view.tsx"
+      ],
+      "externalSources": [],
+      "enrichedFrom": "jc-webapp/20260702-183430/02-rule-suggestions.json"
+    },
+    {
+      "id": "jc-webapp-08",
+      "sourceRepo": "jc-webapp",
+      "title": "Keep Unit-Testable Boundaries Covered with Vitest",
+      "criticality": "medium",
+      "classification": "testing",
+      "targetLanguage": "typescript",
+      "fileGlobs": [
+        "lib/adapters/**/*.ts",
+        "features/**/realtime/**/*.ts",
+        "components/primitives/**/*.tsx"
+      ],
+      "description": "Changes to adapters/parsers, pure helpers, cache patch/merge logic, realtime normalization/routing, or reusable primitives with non-trivial behavior should add or update colocated Vitest coverage. Do not use this rule to demand coverage for any `.tsx` change, thin route/layout composition, or auth-dependent async flows that don't yet have an E2E lane.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Original cobria qualquer arquivo ts/tsx, repetindo a cobranca generica de teste ja estreitada em outros repos. Restrito a boundaries deterministicos e testaveis do padrao real do repo.",
+      "confidence": "high",
+      "whyThisRuleExists": "The repo already relies on colocated Vitest coverage for pure transformations and routing logic, and pre-commit plus CI enforce that test lane on every change.",
+      "localEvidence": [
+        "vitest.config.ts",
+        "lefthook.yml",
+        "scripts/run-vitest-pre-commit.sh",
+        "lib/adapters/demands.test.ts",
+        "features/conta/contractor/realtime/contractor-realtime-router.test.ts",
+        ".github/workflows/production.yaml",
+        ".github/workflows/staging.yaml"
+      ],
+      "externalSources": [
+        "https://nextjs.org/docs/app/guides/testing/vitest"
+      ],
+      "enrichedFrom": "jc-webapp/20260702-183430/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-robots-01",
+      "sourceRepo": "jobs-robots",
+      "title": "Promo And PIX Subscription Semantics Must Stay Explicit",
+      "criticality": "high",
+      "classification": "domain-rule",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Model/Assinatura.php",
+        "php/app/Console/Command/AssinaturasShell.php",
+        "php/app/Test/Case/Model/Assinatura*.php"
+      ],
+      "description": "A change touches promotional or PIX subscription logic without preserving or clearly documenting the current semantics for `vigencia_promo`, paid-payment counting, local migration without `iugu_assinatura_id`, and PIX/manual payment filtering.",
+      "reviewStatus": "approved",
+      "confidence": "high",
+      "whyThisRuleExists": "The repo's subscription flows mix local DB state, provider state, and fallback paths that are easy to break if the existing semantics are changed implicitly.",
+      "localEvidence": [
+        "php/app/Model/Assinatura.php",
+        "php/app/Console/Command/AssinaturasShell.php",
+        "php/app/Test/Case/Model/AssinaturaTest.php"
+      ],
+      "externalSources": [],
+      "enrichedFrom": "jobs-robots/2026-07-02-135414/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-robots-02",
+      "sourceRepo": "jobs-robots",
+      "title": "Webhook Auth Must Preserve Integrity Checks And Key Hygiene",
+      "criticality": "high",
+      "classification": "security",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Lib/WebhookAuthorizationLib.php",
+        "php/app/Test/Case/Lib/WebhookAuthorizationLibTest.php",
+        "php/app/Test/Case/Model/*Webhook*.php",
+        "php/app/Controller/**/*.php"
+      ],
+      "description": "A change to webhook authorization or decryption bypasses MAC verification, weakens key normalization or length checks, skips invalid-payload handling, or hard-codes secrets instead of reading them from configuration.",
+      "reviewStatus": "approved",
+      "confidence": "high",
+      "whyThisRuleExists": "The repo already implements authenticated decryption plus deploy-time secret handling, so weakening those checks would silently reduce trust in external integrations.",
+      "localEvidence": [
+        "php/app/Lib/WebhookAuthorizationLib.php",
+        "php/app/Test/Case/Lib/WebhookAuthorizationLibTest.php",
+        ".github/workflows/production.yaml",
+        "README.md"
+      ],
+      "externalSources": [
+        "https://www.php.net/manual/en/function.hash-equals.php",
+        "https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html",
+        "https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html"
+      ],
+      "enrichedFrom": "jobs-robots/2026-07-02-135414/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-robots-03",
+      "sourceRepo": "jobs-robots",
+      "title": "PHP Changes Must Remain Compatible With The Docker Runtime",
+      "criticality": "high",
+      "classification": "operations",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/**/*.php",
+        "Dockerfile",
+        "README.md",
+        ".tool-versions",
+        "php/composer.json"
+      ],
+      "description": "A PHP change relies on PHP 8+ syntax, extensions, or behavior without an accompanying runtime and tooling upgrade for the 7.4-based Docker and test environment.",
+      "reviewStatus": "approved",
+      "confidence": "high",
+      "whyThisRuleExists": "The documented and containerized runtime is PHP 7.4.33, so host-only validation on newer PHP versions can give false confidence.",
+      "localEvidence": [
+        "README.md",
+        "Dockerfile",
+        ".tool-versions",
+        "php/composer.json"
+      ],
+      "externalSources": [],
+      "enrichedFrom": "jobs-robots/2026-07-02-135414/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-robots-04",
+      "sourceRepo": "jobs-robots",
+      "title": "Subscription And Payment Flows Must Stay Owned By Assinatura/Pagamento",
+      "criticality": "high",
+      "classification": "local-convention",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Console/Command/**/*.php",
+        "php/app/Controller/**/*.php",
+        "php/app/Model/Assinatura.php"
+      ],
+      "description": "A change reimplements or unnecessarily bypasses an existing semantics already owned by the `Assinatura`/`Pagamento` models (promo migration, PIX renewal, payment filters, Iugu plan sync/migration), or grows that logic in a shell/controller when a domain method already owns the flow.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Original era regra ampla de 'business logic outside model', quase igual a de jobs-site. Estreitada para os fluxos ja centralizados em Assinatura/Pagamento neste repo, deixando de ser mais uma versao da familia generica.",
+      "confidence": "high",
+      "whyThisRuleExists": "This repo keeps billing and subscription rules in models, and CakePHP models are the framework business layer.",
+      "localEvidence": [
+        "php/app/Console/Command/AssinaturasShell.php",
+        "php/app/Model/Assinatura.php",
+        "php/app/Model/AppModel.php"
+      ],
+      "externalSources": [
+        "https://book.cakephp.org/2.x/models.html"
+      ],
+      "enrichedFrom": "jobs-robots/2026-07-02-135414/02-rule-suggestions.json",
+      "renamedFrom": "Subscription And Payment Rules Stay In Models"
+    },
+    {
+      "id": "jobs-robots-05",
+      "sourceRepo": "jobs-robots",
+      "title": "Transition Side Effects Should Use Events Or Shared Libs",
+      "criticality": "medium",
+      "classification": "local-convention",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Model/**/*.php",
+        "php/app/Lib/**/*.php",
+        "php/app/Lib/Event/**/*.php"
+      ],
+      "description": "A change bypasses an existing `dispararEvento()` dispatch or a listener registered in `Config/events.php`, alters a payload consumed by a listener without aligning the other side, or duplicates a side effect instead of reusing `EmailLib` or the listener that already owns the flow.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Restrito a transicoes ja explicitamente event-driven ou com seam compartilhado claro, para nao competir com a regra equivalente de nimda nem com a de evento/listener de jobs-manager.",
+      "confidence": "high",
+      "whyThisRuleExists": "The repo uses global listeners and shared libraries to keep side effects loosely coupled from core domain transitions.",
+      "localEvidence": [
+        "php/app/Model/AppModel.php",
+        "php/app/Config/events.php",
+        "php/app/Lib/Event/GeralContatoListener.php",
+        "php/app/Lib/EmailLib.php"
+      ],
+      "externalSources": [
+        "https://book.cakephp.org/2.x/core-libraries/events.html",
+        "https://book.cakephp.org/2.x/models.html"
+      ],
+      "enrichedFrom": "jobs-robots/2026-07-02-135414/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-robots-06",
+      "sourceRepo": "jobs-robots",
+      "title": "High-Risk Domain Changes Need Focused PHPUnit Coverage",
+      "criticality": "medium",
+      "classification": "testing",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Model/Assinatura.php",
+        "php/app/Lib/WebhookAuthorizationLib.php",
+        "php/app/Lib/Event/**/*.php",
+        "php/app/Test/Case/**/*.php"
+      ],
+      "description": "A change to `Assinatura`, `WebhookAuthorizationLib`, payment/notification/webhook listeners, or PIX/promo flows and workers that alter operational behavior shipped without focused PHPUnit coverage in the repo's real test style (`AssinaturaTest`, `WebhookTest`, `WebhookAuthorizationLibTest`, or shell/model tests when there is an explicit operational contract).",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Reduzida de high generico para medium e restrita as areas de maior risco, para nao repetir a mesma cobranca generica de teste ja presente em outros repos validados.",
+      "confidence": "high",
+      "whyThisRuleExists": "CI runs the Cake `AllTests` suite, and this repo already relies on focused regression tests for billing, PIX, and webhook behavior.",
+      "localEvidence": [
+        "php/composer.json",
+        "php/app/Test/Case/Model/AssinaturaTest.php",
+        "php/app/Test/Case/Lib/WebhookAuthorizationLibTest.php",
+        "php/scripts/README.md"
+      ],
+      "externalSources": [
+        "https://phpunit.de/getting-started/phpunit-5.html"
+      ],
+      "enrichedFrom": "jobs-robots/2026-07-02-135414/02-rule-suggestions.json",
+      "renamedFrom": "Domain Changes Need Focused PHPUnit Coverage"
+    },
+    {
+      "id": "jobs-robots-07",
+      "sourceRepo": "jobs-robots",
+      "title": "Mautic Payload Must Preserve Explicit Null And Placeholder Fields",
+      "criticality": "high",
+      "classification": "domain-rule",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Model/**/*.php",
+        "php/app/Lib/**/*.php"
+      ],
+      "description": "A change to Mautic payload-building logic filters the payload with `array_filter()`, drops explicit `null` or `'-'` values, or changes merge order so field-clearing semantics stop reaching Mautic. In this repo those falsy values are intentional in flows like `cadastrarAtualizarUsuarioMautic()` and are covered by focused tests.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "A regra default antiga era uma proibicao generica de `array_filter`; aqui ela foi reescrita para a semantica real do payload Mautic deste repo.",
+      "confidence": "high",
+      "whyThisRuleExists": "The Mautic marketing payload intentionally carries explicit null and '-' placeholder values so that field-clearing semantics reach Mautic; filtering them out (e.g. array_filter) silently stops fields from ever being cleared.",
+      "localEvidence": [
+        "php/app/Plugin/Marketing/Lib/Providers/Mautic.php",
+        "php/app/Plugin/Marketing/Lib/MarketingLib.php",
+        "php/app/Model/User.php",
+        "php/app/Test/Case/Model/UserTest.php",
+        "php/app/Test/Case/Model/UserMauticTest.php"
+      ],
+      "externalSources": [],
+      "enrichedFrom": "manual (evidence verified in ProjetosElevia working copies, 2026-07-06)"
+    },
+    {
+      "id": "jobs-robots-08",
+      "sourceRepo": "jobs-robots",
+      "title": "CakePHP 2 File/Class Naming Mismatch",
+      "criticality": "high",
+      "classification": "framework-best-practice",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Controller/**/*.php",
+        "php/app/Model/**/*.php",
+        "php/app/Lib/**/*.php",
+        "php/app/Controller/Component/**/*.php"
+      ],
+      "description": "In CakePHP 2, the filename must exactly match the class name including case. A mismatch causes silent load failures. Bad: file `emailSender.php` containing `class EmailSender`. Good: file `EmailSender.php` containing `class EmailSender`.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Movida da baseline default para repo-specific porque esta cobranca so faz sentido nos repos legados em CakePHP 2.",
+      "confidence": "high",
+      "whyThisRuleExists": "CakePHP 2 resolves classes from filenames, so a filename/class-name case mismatch fails silently at load time instead of erroring. AppController.php and AppModel.php show the canonical naming this repo follows.",
+      "localEvidence": [
+        "php/app/Controller/AppController.php",
+        "php/app/Model/AppModel.php"
+      ],
+      "externalSources": [
+        "https://book.cakephp.org/2.x/en/conventions.html"
+      ],
+      "enrichedFrom": "manual (evidence verified in ProjetosElevia working copies, 2026-07-06)"
+    },
+    {
+      "id": "jobs-robots-09",
+      "sourceRepo": "jobs-robots",
+      "title": "CakePHP 2 Undeclared $uses or $components",
+      "criticality": "high",
+      "classification": "framework-best-practice",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Controller/**/*.php"
+      ],
+      "description": "A Model or Component is used inside a CakePHP 2 controller without being declared in $uses or $components. This causes a fatal error at runtime. Bad: calling `$this->Payment->save()` without `public $uses = [\"Payment\"]`. Good: declare every Model in `$uses` and every Component in `$components` before using them.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Movida da baseline default para repo-specific porque esta cobranca so faz sentido nos repos legados em CakePHP 2.",
+      "confidence": "high",
+      "whyThisRuleExists": "CakePHP 2 controllers only get magic model/component properties that are declared in $uses/$components (or loaded explicitly); calling an undeclared one is a runtime fatal. The evidence files show the declaration pattern this repo follows.",
+      "localEvidence": [
+        "php/app/Controller/AppController.php",
+        "php/app/Controller/PagesController.php"
+      ],
+      "externalSources": [
+        "https://book.cakephp.org/2.x/controllers.html"
+      ],
+      "enrichedFrom": "manual (evidence verified in ProjetosElevia working copies, 2026-07-06)"
+    },
+    {
+      "id": "jobs-site-01",
+      "sourceRepo": "jobs-site",
+      "title": "Business Logic Outside Model Layer",
+      "criticality": "high",
+      "classification": "framework-best-practice",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Controller/**/*.php",
+        "php/app/View/**/*.ctp"
+      ],
+      "description": "A domain calculation, eligibility check, or status transition was added in a controller or view instead of a model or model-backed service boundary.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Removida a mencao a 'persistence workflow' para nao sobrepor jobs-site-07, que ja e a regra estreita de find/save/updateAll/deleteAll encadeado em controller/component. jobs-site-01 fica com calculo de dominio, eligibility check e status transition; jobs-site-07 fica com o workflow de persistencia/lookup.",
+      "confidence": "high",
+      "whyThisRuleExists": "Local AGENTS guidance and CakePHP 2 MVC both treat models as the business layer; controllers here are already large and should not absorb more domain logic.",
+      "localEvidence": [
+        "AGENTS.md",
+        "docs/PROJECT_CONTEXT.md",
+        "php/app/Controller/AssinaturasController.php",
+        "php/app/Model/Assinatura.php",
+        "php/app/Model/UserConta.php"
+      ],
+      "externalSources": [
+        "https://book.cakephp.org/2.x/controllers.html",
+        "https://book.cakephp.org/2.x/models.html"
+      ],
+      "enrichedFrom": "jobs-site/2026-07-02-130902/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-site-02",
+      "sourceRepo": "jobs-site",
+      "title": "Unscoped CakePHP Query Or Overfetch",
+      "criticality": "high",
+      "classification": "performance",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Controller/**/*.php",
+        "php/app/Model/**/*.php"
+      ],
+      "description": "A new or changed find or paginate query omits intentional fields, contain, recursive, order, or limits where the call site needs them, increasing overfetching or N+1 risk.",
+      "reviewStatus": "approved",
+      "confidence": "high",
+      "whyThisRuleExists": "This repo already uses recursive = -1, contain, and cached lookups as performance guardrails; CakePHP 2 also expects explicit query scoping.",
+      "localEvidence": [
+        "AGENTS.md",
+        "docs/PLAYBOOK.md",
+        "php/app/Controller/AppController.php",
+        "php/app/Controller/AssinaturasController.php",
+        "php/app/Model/Assinatura.php"
+      ],
+      "externalSources": [
+        "https://book.cakephp.org/2.x/models/retrieving-your-data.html",
+        "https://book.cakephp.org/2.x/core-libraries/behaviors/containable.html"
+      ],
+      "enrichedFrom": "jobs-site/2026-07-02-130902/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-site-03",
+      "sourceRepo": "jobs-site",
+      "title": "Manual SQL Or Unsafe Query Construction",
+      "criticality": "high",
+      "classification": "security",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Controller/**/*.php",
+        "php/app/Model/**/*.php",
+        "php/app/Lib/**/*.php"
+      ],
+      "description": "A new Model::query path or string-built SQL statement is introduced without a strong reason, array-based conditions, and safe escaping of all dynamic values.",
+      "reviewStatus": "approved",
+      "confidence": "high",
+      "whyThisRuleExists": "CakePHP 2 prefers array conditions and warns that query should rarely be necessary; controller-level raw SQL is easy to make unsafe in this legacy app.",
+      "localEvidence": [
+        "AGENTS.md",
+        "docs/PLAYBOOK.md",
+        "php/app/Controller/UsersController.php",
+        "php/app/Model/Assinatura.php"
+      ],
+      "externalSources": [
+        "https://book.cakephp.org/2.x/models/retrieving-your-data.html",
+        "https://cheatsheetseries.owasp.org/cheatsheets/Secure_Code_Review_Cheat_Sheet.html"
+      ],
+      "enrichedFrom": "jobs-site/2026-07-02-130902/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-site-04",
+      "sourceRepo": "jobs-site",
+      "title": "Magic Status Or Payment IDs Instead Of Named Constants",
+      "criticality": "medium",
+      "classification": "domain-rule",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Controller/**/*.php",
+        "php/app/Model/**/*.php",
+        "php/app/Lib/**/*.php"
+      ],
+      "description": "A diff introduces or expands a status, payment-form, or transfer ID branch without reusing the named constant already defined on the matching model (Assinatura/Pagamento and related), even though an equivalent constant exists nearby.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Restrita a reuso de constante ja existente no model, para nao sobrepor a nova regra default 'Magic Number Without Named Constant' (que cobre o caso generico de extrair um literal para constante quando nenhuma existe ainda).",
+      "confidence": "high",
+      "whyThisRuleExists": "The repo's agent rules explicitly ban new magic numbers, and several status models already expose constants that should be reused.",
+      "localEvidence": [
+        "AGENTS.md",
+        "php/app/Controller/AssinaturasController.php",
+        "php/app/Model/AssinaturaStatus.php",
+        "php/app/Model/CobrancaStatus.php",
+        "php/app/Model/ContatoStatus.php",
+        "php/app/Model/CorrespondenteContatoStatus.php"
+      ],
+      "externalSources": [],
+      "enrichedFrom": "jobs-site/2026-07-02-130902/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-site-05",
+      "sourceRepo": "jobs-site",
+      "title": "Auth Session Or Route Change Without Global Boundary Review",
+      "criticality": "high",
+      "classification": "security",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Controller/**/*.php",
+        "php/app/Config/routes.php"
+      ],
+      "description": "A login, permission, session, maintenance, canonical-host, or redirect change is made without reviewing AppController, routes.php, and the server-side authorization checks that guard the affected flow.",
+      "reviewStatus": "approved",
+      "confidence": "high",
+      "whyThisRuleExists": "Global auth/session/redirect behavior is centralized in AppController and route ownership is large and SEO-heavy; small diffs can have repo-wide side effects.",
+      "localEvidence": [
+        "AGENTS.md",
+        "docs/PLAYBOOK.md",
+        "php/app/Controller/AppController.php",
+        "php/app/Config/routes.php",
+        "php/app/Test/Case/Controller/AppControllerTest.php"
+      ],
+      "externalSources": [
+        "https://book.cakephp.org/2.x/controllers.html",
+        "https://cheatsheetseries.owasp.org/cheatsheets/Secure_Code_Review_Cheat_Sheet.html"
+      ],
+      "enrichedFrom": "jobs-site/2026-07-02-130902/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-site-06",
+      "sourceRepo": "jobs-site",
+      "title": "Config Change Without Env Wiring Or Secret Hygiene",
+      "criticality": "high",
+      "classification": "operations",
+      "targetLanguage": "mixed",
+      "fileGlobs": [
+        "php/app/Config/**/*.php",
+        "php/.env.dev",
+        "aws/secrets.sh",
+        "docs/ENV_REFERENCE.md",
+        ".github/workflows/**/*.yaml",
+        "Dockerfile",
+        "docker-compose.yml"
+      ],
+      "description": "A new configuration value is added without env-based wiring, without updating php/.env.dev, aws/secrets.sh, and docs/ENV_REFERENCE.md by name only, or by committing a real secret or hardcoded credential.",
+      "reviewStatus": "approved",
+      "confidence": "high",
+      "whyThisRuleExists": "The repo relies heavily on env-driven runtime behavior and its local policy explicitly requires names-only documentation plus synchronized env wiring.",
+      "localEvidence": [
+        "AGENTS.md",
+        "docs/ENV_REFERENCE.md",
+        "php/app/Config/core.php",
+        ".github/workflows/production.yaml",
+        ".github/workflows/staging.yaml"
+      ],
+      "externalSources": [
+        "https://cheatsheetseries.owasp.org/cheatsheets/Secure_Code_Review_Cheat_Sheet.html"
+      ],
+      "enrichedFrom": "jobs-site/2026-07-02-130902/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-site-07",
+      "sourceRepo": "jobs-site",
+      "title": "Controller Adds Ad Hoc Persistence Or Lookup Workflow",
+      "criticality": "high",
+      "classification": "local-convention",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Controller/**/*.php",
+        "php/app/Controller/Component/**/*.php"
+      ],
+      "description": "A controller or component chains new find/save/updateAll/deleteAll read-write workflow logic that should instead become a reusable model method testable in isolation.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Encosta bastante em jobs-site-01 (business logic outside model) e na regra de query/performance; mantida separada por foco (workflow encadeado especifico), mas pode ser fundida no futuro se gerar comentario duplicado no mesmo diff.",
+      "confidence": "high",
+      "whyThisRuleExists": "Repo docs explicitly ask for reusable model methods instead of scattered native Cake data access in business workflows.",
+      "localEvidence": [
+        "AGENTS.md",
+        "docs/PLAYBOOK.md",
+        "php/app/Controller/AssinaturasController.php",
+        "php/app/Controller/CorrespondentesController.php",
+        "php/app/Model/Assinatura.php"
+      ],
+      "externalSources": [
+        "https://book.cakephp.org/2.x/controllers.html",
+        "https://book.cakephp.org/2.x/models.html"
+      ],
+      "enrichedFrom": "jobs-site/2026-07-02-130902/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-site-08",
+      "sourceRepo": "jobs-site",
+      "title": "High-Risk Behavior Change Without Fixture Or Mock Coverage",
+      "criticality": "medium",
+      "classification": "testing",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Controller/AppController.php",
+        "php/app/Controller/AssinaturasController.php",
+        "php/app/Model/**/*.php",
+        "php/app/Config/events.php",
+        "php/app/Lib/**/*.php",
+        "php/app/Test/Case/**/*.php",
+        "php/app/Test/Fixture/**/*.php"
+      ],
+      "description": "A DB-backed behavior change in auth, billing, model callbacks, external integrations, or listeners/shared libs lands without the necessary fixtures for queried models, or an external integration path is tested with production-only hooks instead of mocking the boundary.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Reduzida de high generico para medium e restrita a auth, billing, callbacks de model, integracoes externas e listeners/libs compartilhadas -- ficou ampla demais como veio para um repo legado deste tamanho.",
+      "confidence": "high",
+      "whyThisRuleExists": "Local rules require behavior-focused tests, fixture-backed DB coverage, and mocked external services. The existing suite already uses fixtures and controller/model mocks extensively.",
+      "localEvidence": [
+        "AGENTS.md",
+        "docs/PLAYBOOK.md",
+        "php/app/Test/Case/Model/UserContaTest.php",
+        "php/app/Test/Case/Model/AssinaturaTest.php",
+        "php/app/Test/Case/Controller/AppControllerTest.php",
+        ".github/workflows/production.yaml"
+      ],
+      "externalSources": [
+        "https://book.cakephp.org/2.x/development/testing.html"
+      ],
+      "enrichedFrom": "jobs-site/2026-07-02-130902/02-rule-suggestions.json",
+      "renamedFrom": "Behavior Change Without Fixture Or Mock Coverage"
+    },
+    {
+      "id": "jobs-site-09",
+      "sourceRepo": "jobs-site",
+      "title": "User Controlled Data Must Be Validated On Input And Escaped On Output",
+      "criticality": "high",
+      "classification": "security",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Controller/**/*.php",
+        "php/app/Model/**/*.php",
+        "php/app/View/**/*.ctp",
+        "php/app/View/Emails/**/*.ctp",
+        "php/app/Lib/**/*.php"
+      ],
+      "description": "User-controlled data reaches persistence or rendering without server-side validation/normalization and context-appropriate escaping. Trigger mainly at trust-boundary crossings: persistence of user input, rendering of user-controlled content, and HTML/URL/email/payloads flowing out to templates. Keep `high` only when there is a clear risk of XSS, template injection, sensitive data exposure, or missing validation.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Original podia comentar em excesso em qualquer diff de controller/model/view/email. Restrita a mudancas de trust boundary de verdade.",
+      "confidence": "high",
+      "whyThisRuleExists": "The repo already validates structured data in models and commonly escapes output with h() in templates; OWASP guidance says validation and output encoding must both be preserved at the trust boundary.",
+      "localEvidence": [
+        "AGENTS.md",
+        "php/app/Model/UserConta.php",
+        "php/app/View/Users/conta.ctp",
+        "php/app/View/Emails/html/assinatura_pix.ctp",
+        "php/app/View/Elements/mensagem_detalhe/detalhe_item.ctp"
+      ],
+      "externalSources": [
+        "https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html",
+        "https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html"
+      ],
+      "enrichedFrom": "jobs-site/2026-07-02-130902/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-site-10",
+      "sourceRepo": "jobs-site",
+      "title": "New Jobs Site Migration Or Vendor Patch",
+      "criticality": "high",
+      "classification": "operations",
+      "targetLanguage": "mixed",
+      "fileGlobs": [
+        "php/vendors/**/*",
+        "php/app/Config/Migration/**/*.php"
+      ],
+      "description": "A diff adds a new app migration (schema work belongs in jobs-database, not here) or edits vendor/Composer-installed dependency code in place instead of fixing the package at its source. For php/app/Plugin/**, only flag when the reviewer has confirmed the plugin is Composer-installed rather than team-owned local code -- do not block any app/Plugin change automatically.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "fileGlobs original incluia php/app/Plugin/**/* como bloqueio bruto, mas nesse repo app/Plugin mistura pacote instalado com plugin local. Removido do bloqueio automatico; mantido so como verificacao manual do reviewer.",
+      "confidence": "medium",
+      "whyThisRuleExists": "The repo contains historical migration and plugin files, but current policy is explicit: new migrations do not belong here and package code should not be patched in place.",
+      "localEvidence": [
+        "AGENTS.md",
+        "docs/PROJECT_CONTEXT.md",
+        "php/app/Config/Migration/1484338927_validacao_correspondentes.php",
+        "php/composer.json"
+      ],
+      "externalSources": [],
+      "enrichedFrom": "jobs-site/2026-07-02-130902/02-rule-suggestions.json"
+    },
+    {
+      "id": "jobs-site-11",
+      "sourceRepo": "jobs-site",
+      "title": "CakePHP 2 File/Class Naming Mismatch",
+      "criticality": "high",
+      "classification": "framework-best-practice",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Controller/**/*.php",
+        "php/app/Model/**/*.php",
+        "php/app/Lib/**/*.php",
+        "php/app/Controller/Component/**/*.php"
+      ],
+      "description": "In CakePHP 2, the filename must exactly match the class name including case. A mismatch causes silent load failures. Bad: file `emailSender.php` containing `class EmailSender`. Good: file `EmailSender.php` containing `class EmailSender`.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Movida da baseline default para repo-specific porque esta cobranca so faz sentido nos repos legados em CakePHP 2.",
+      "confidence": "high",
+      "whyThisRuleExists": "CakePHP 2 resolves classes from filenames, so a filename/class-name case mismatch fails silently at load time instead of erroring. AppController.php and AppModel.php show the canonical naming this repo follows.",
+      "localEvidence": [
+        "php/app/Controller/AppController.php",
+        "php/app/Model/AppModel.php"
+      ],
+      "externalSources": [
+        "https://book.cakephp.org/2.x/en/conventions.html"
+      ],
+      "enrichedFrom": "manual (evidence verified in ProjetosElevia working copies, 2026-07-06)"
+    },
+    {
+      "id": "jobs-site-12",
+      "sourceRepo": "jobs-site",
+      "title": "CakePHP 2 Undeclared $uses or $components",
+      "criticality": "high",
+      "classification": "framework-best-practice",
+      "targetLanguage": "php",
+      "fileGlobs": [
+        "php/app/Controller/**/*.php"
+      ],
+      "description": "A Model or Component is used inside a CakePHP 2 controller without being declared in $uses or $components. This causes a fatal error at runtime. Bad: calling `$this->Payment->save()` without `public $uses = [\"Payment\"]`. Good: declare every Model in `$uses` and every Component in `$components` before using them.",
+      "reviewStatus": "approved_with_adjustment",
+      "adjustmentNotes": "Movida da baseline default para repo-specific porque esta cobranca so faz sentido nos repos legados em CakePHP 2.",
+      "confidence": "high",
+      "whyThisRuleExists": "CakePHP 2 controllers only get magic model/component properties that are declared in $uses/$components (or loaded explicitly); calling an undeclared one is a runtime fatal. The evidence files show the declaration pattern this repo follows.",
+      "localEvidence": [
+        "php/app/Controller/AppController.php",
+        "php/app/Controller/CidadesController.php"
+      ],
+      "externalSources": [
+        "https://book.cakephp.org/2.x/controllers.html"
+      ],
+      "enrichedFrom": "manual (evidence verified in ProjetosElevia working copies, 2026-07-06)"
+    }
+  ],
+  "discardedRules": {
+    "note": "Listadas apenas para referencia/auditoria -- NAO estao ativas e nao devem ser reimportadas sem nova decisao.",
+    "jobs-manager": [
+      "Keep Controllers Thin and Domain Logic Reusable",
+      "Control Association Loading on Reads"
+    ],
+    "jobs-database": [
+      "Use create() or update() Inside change() Migrations"
+    ],
+    "jobs-chat": [
+      "Keep Controllers Thin and Delegate Domain Flow"
+    ],
+    "backend-api": [
+      "Retriable Celery Tasks For External IO",
+      "Update Runtime Docs When Local Topology Changes"
+    ],
+    "jc-webapp": [
+      "Keep App Router Files Thin",
+      "Preserve a Single Root proxy.ts Entry",
+      "Use Repo Tokens and Breakpoints Instead of Ad Hoc Tailwind Values"
+    ],
+    "jobs-robots": [
+      "Shell Actions Should Orchestrate And Reuse Tasks",
+      "Cake Queries Must Declare Their Fetch Scope"
+    ]
+  }
+}
