@@ -29,13 +29,8 @@ export class CommentService {
 
   formatMarkdown(data: CommentData): string {
     const { score, issues, generalIssues = [] } = data;
-    const knownDebtIssues = issues.filter((issue) => issue.baselineStatus === 'known_debt');
-    const scoredIssues = issues.filter(
-      (issue) => !issue.advisory && issue.baselineStatus !== 'known_debt',
-    );
-    const advisoryIssues = issues.filter(
-      (issue) => issue.advisory && issue.baselineStatus !== 'known_debt',
-    );
+    const scoredIssues = issues.filter((issue) => !issue.advisory);
+    const advisoryIssues = issues.filter((issue) => issue.advisory);
 
     const highCount = scoredIssues.filter((i) => i.criticality === 'high').length;
     const mediumCount = scoredIssues.filter((i) => i.criticality === 'medium').length;
@@ -46,7 +41,6 @@ export class CommentService {
       this.badge('Alta', String(highCount), highCount > 0 ? 'da3633' : GRAY),
       this.badge('Média', String(mediumCount), mediumCount > 0 ? 'd4a72c' : GRAY),
       this.badge('Baixa', String(lowCount), lowCount > 0 ? '388bfd' : GRAY),
-      this.badge('Dívida', String(knownDebtIssues.length), knownDebtIssues.length > 0 ? 'db6d28' : GRAY),
     ].join(' ');
 
     const sections: string[] = [];
@@ -60,21 +54,32 @@ export class CommentService {
       sections.push('');
     }
 
-    if (knownDebtIssues.length > 0) {
-      sections.push(this.renderSection('Dívida técnica conhecida', knownDebtIssues));
-    }
+    const secondarySections: string[] = [];
 
     if (advisoryIssues.length > 0) {
-      sections.push(this.renderCollapsedSection('Observações adicionais', advisoryIssues));
+      secondarySections.push(
+        this.renderCollapsedSection(
+          'Outros problemas',
+          'além do limite que conta para a nota',
+          advisoryIssues,
+        ),
+      );
     }
 
     if (generalIssues.length > 0) {
-      sections.push(this.renderCollapsedSection('Achados gerais', generalIssues));
+      secondarySections.push(
+        this.renderCollapsedSection('Sugestões gerais', 'fora das regras do repositório', generalIssues),
+      );
+    }
+
+    if (secondarySections.length > 0) {
+      sections.push('<sub>ℹ️ As seções abaixo são informativas e **não alteram a nota**.</sub>');
+      sections.push('');
+      sections.push(secondarySections.join('\n\n'));
     }
 
     if (scoredIssues.length === 0) {
-      const allClear =
-        knownDebtIssues.length === 0 && advisoryIssues.length === 0 && generalIssues.length === 0;
+      const allClear = advisoryIssues.length === 0 && generalIssues.length === 0;
       sections.push(
         [
           '> [!TIP]',
@@ -135,45 +140,32 @@ export class CommentService {
     return lines.join('\n');
   }
 
-  private renderSection(title: string, sectionIssues: CommentIssue[]): string {
-    const lines: string[] = [`### ${title} <sub>— não afeta a nota</sub>`, ''];
-    for (const issue of sectionIssues) {
-      lines.push(this.renderDetailsItem(issue));
-      lines.push('');
-    }
-    return lines.join('\n');
-  }
-
-  private renderCollapsedSection(title: string, sectionIssues: CommentIssue[]): string {
-    const lines: string[] = [
+  private renderCollapsedSection(
+    title: string,
+    subtitle: string,
+    sectionIssues: CommentIssue[],
+  ): string {
+    const items = sectionIssues.map((issue) => this.renderFlatItem(issue)).join('\n\n');
+    return [
       '<details>',
-      `<summary><strong>${title}</strong> <sub>— não afeta a nota</sub></summary>`,
+      `<summary><strong>${title}</strong> <sub>· ${subtitle} · ${sectionIssues.length}</sub></summary>`,
       '',
-    ];
-    for (const issue of sectionIssues) {
-      lines.push(this.renderDetailsItem(issue));
-      lines.push('');
-    }
-    lines.push('</details>');
-    return lines.join('\n');
+      items,
+      '',
+      '</details>',
+    ].join('\n');
   }
 
-  private renderDetailsItem(issue: CommentIssue): string {
-    const lines: string[] = [];
-    lines.push('<details>');
-    lines.push(`<summary><code>${issue.file}</code> — ${issue.description}</summary>`);
-    lines.push('');
-    lines.push(issue.reason);
+  private renderFlatItem(issue: CommentIssue): string {
+    let block = `**\`${issue.file}\`** — ${issue.description}`;
+    if (issue.reason) {
+      block += `<br><sub>${issue.reason}</sub>`;
+    }
     if (issue.snippet) {
       const language = detectLanguageFromFilename(issue.file) ?? '';
-      lines.push('');
-      lines.push('```' + language);
-      lines.push(issue.snippet);
-      lines.push('```');
+      block += `\n\n\`\`\`${language}\n${issue.snippet}\n\`\`\``;
     }
-    lines.push('');
-    lines.push('</details>');
-    return lines.join('\n');
+    return block;
   }
 
   private formatTimestamp(date: Date): string {

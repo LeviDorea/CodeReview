@@ -237,7 +237,7 @@ Some repository conventions live here.
       );
     });
 
-    it('should classify persistent, new, and known debt issues using the previous analysis baseline', async () => {
+    it('should classify persistent and new issues and drop pre-existing (out-of-diff) ones', async () => {
       mockPrisma.analysis.findUnique.mockResolvedValue(null);
       mockPrisma.analysis.findFirst.mockResolvedValue({
         id: 'prev-analysis',
@@ -340,20 +340,20 @@ Some repository conventions live here.
         ],
         { high: 10, medium: 4, low: 1 },
       );
-      expect(mockPrisma.analysis.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            issues: expect.arrayContaining([
-              expect.objectContaining({ file: 'src/app.ts', baselineStatus: 'persistent' }),
-              expect.objectContaining({ file: 'src/new.ts', baselineStatus: 'new' }),
-              expect.objectContaining({ file: 'src/legacy.ts', baselineStatus: 'known_debt' }),
-            ]),
-          }),
-        }),
+      const storedIssues = mockPrisma.analysis.create.mock.calls[0][0].data.issues;
+      expect(storedIssues).toHaveLength(2);
+      expect(storedIssues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ file: 'src/app.ts', baselineStatus: 'persistent' }),
+          expect.objectContaining({ file: 'src/new.ts', baselineStatus: 'new' }),
+        ]),
+      );
+      expect(storedIssues).not.toContainEqual(
+        expect.objectContaining({ file: 'src/legacy.ts' }),
       );
     });
 
-    it('should keep previously known debt outside the score when it reappears', async () => {
+    it('should drop previously known debt entirely when it reappears (diff-only scope)', async () => {
       mockPrisma.analysis.findUnique.mockResolvedValue(null);
       mockPrisma.analysis.findFirst.mockResolvedValue({
         id: 'prev-analysis',
@@ -407,19 +407,8 @@ Some repository conventions live here.
       await svc.runPipeline(EVENT);
 
       expect(mockScoring.calculate).toHaveBeenCalledWith([], { high: 10, medium: 4, low: 1 });
-      expect(mockPrisma.analysis.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            issues: [
-              expect.objectContaining({
-                file: 'src/legacy.ts',
-                baselineStatus: 'known_debt',
-                advisory: false,
-              }),
-            ],
-          }),
-        }),
-      );
+      const storedIssues = mockPrisma.analysis.create.mock.calls[0][0].data.issues;
+      expect(storedIssues).toEqual([]);
     });
 
     it('should complete the pipeline and keep the score even if general analysis fails', async () => {

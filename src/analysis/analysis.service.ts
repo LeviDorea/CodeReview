@@ -345,28 +345,32 @@ export class AnalysisService {
       previousIssueStatus.set(issueKey, issue.baselineStatus);
     }
 
-    return currentIssues.map((issue) => {
-      const issueKey = issue.issueKey ?? buildIssueKey(issue);
-      const hadPreviousIssue = previousIssueStatus.has(issueKey);
-      const previousStatus = previousIssueStatus.get(issueKey);
+    return currentIssues
+      .map((issue): ReviewIssue => {
+        const issueKey = issue.issueKey ?? buildIssueKey(issue);
+        const hadPreviousIssue = previousIssueStatus.has(issueKey);
+        const previousStatus = previousIssueStatus.get(issueKey);
 
-      if (hadPreviousIssue) {
+        if (hadPreviousIssue) {
+          return {
+            ...issue,
+            issueKey,
+            baselineStatus:
+              previousStatus === 'known_debt' ? 'known_debt' : 'persistent',
+          };
+        }
+
         return {
           ...issue,
           issueKey,
-          baselineStatus:
-            previousStatus === 'known_debt' ? 'known_debt' : 'persistent',
+          baselineStatus: issueMatchesDiff(issue, compareFiles)
+            ? 'new'
+            : 'known_debt',
         };
-      }
-
-      return {
-        ...issue,
-        issueKey,
-        baselineStatus: issueMatchesDiff(issue, compareFiles)
-          ? 'new'
-          : 'known_debt',
-      };
-    });
+      })
+      // Review scope is the diff only: drop anything not introduced by this PR
+      // (pre-existing violations flagged from surrounding context).
+      .filter((issue) => issue.baselineStatus !== 'known_debt');
   }
 
   private applyIssueCaps(issues: ReviewIssue[]): ReviewIssue[] {

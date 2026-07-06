@@ -26,15 +26,6 @@ const ADVISORY_ISSUE = {
   rule: 'Boas Práticas',
   advisory: true,
 };
-const KNOWN_DEBT_ISSUE = {
-  file: 'src/legacy.ts',
-  snippet: 'legacyProblem()',
-  description: 'Legacy issue',
-  reason: 'Pre-existing debt',
-  criticality: 'medium' as const,
-  rule: 'Boas Práticas',
-  baselineStatus: 'known_debt' as const,
-};
 const PERSISTENT_ISSUE = {
   ...HIGH_ISSUE,
   baselineStatus: 'persistent' as const,
@@ -68,7 +59,11 @@ describe('CommentService', () => {
       expect(result).toContain('Alta-0-484f58');
       expect(result).toContain('M%C3%A9dia-0-484f58');
       expect(result).toContain('Baixa-0-484f58');
-      expect(result).toContain('D%C3%ADvida-0-484f58');
+    });
+
+    it('should not include a Dívida badge (known debt is out of scope)', () => {
+      const result = svc.formatMarkdown({ score: 100, prTitle: 'PR', issues: [] });
+      expect(result).not.toContain('D%C3%ADvida');
     });
 
     it('should include a tip alert when issues array is empty', () => {
@@ -129,7 +124,7 @@ describe('CommentService', () => {
       expect(result).toContain('_novo neste commit_');
     });
 
-    it('should render advisory issues collapsed under one section toggle, with per-item details nested inside', () => {
+    it('should render advisory issues in one collapsed section with flat items (no nested details)', () => {
       const result = svc.formatMarkdown({
         score: 90,
         prTitle: 'PR',
@@ -137,25 +132,27 @@ describe('CommentService', () => {
       });
 
       expect(result).toContain(
-        '<summary><strong>Observações adicionais</strong> <sub>— não afeta a nota</sub></summary>',
+        '<summary><strong>Outros problemas</strong> <sub>· além do limite que conta para a nota · 1</sub></summary>',
       );
-      expect(result).toContain('<summary><code>src/docs.md</code> — Extra documentation suggestion</summary>');
+      expect(result).toContain('**`src/docs.md`** — Extra documentation suggestion');
+      expect(result).toContain('<sub>Outside the per-run cap</sub>');
+      // no nested per-item <details>/<summary><code> inside the section
+      expect(result).not.toContain('<summary><code>');
     });
 
-    it('should render known debt under its own heading, outside the scored alerts', () => {
+    it('should render the legend line above the informational sections', () => {
       const result = svc.formatMarkdown({
         score: 90,
         prTitle: 'PR',
-        issues: [NEW_ISSUE, KNOWN_DEBT_ISSUE],
+        issues: [PERSISTENT_ISSUE, ADVISORY_ISSUE],
       });
 
-      expect(result).toContain('### Dívida técnica conhecida <sub>— não afeta a nota</sub>');
-      expect(result).toContain('<summary><code>src/legacy.ts</code> — Legacy issue</summary>');
-      expect(result).toContain('Pre-existing debt');
-      expect(result).toContain('D%C3%ADvida-1-db6d28');
+      expect(result).toContain(
+        '<sub>ℹ️ As seções abaixo são informativas e **não alteram a nota**.</sub>',
+      );
     });
 
-    it('should render general issues collapsed under one section toggle', () => {
+    it('should render general issues in one collapsed section', () => {
       const result = svc.formatMarkdown({
         score: 90,
         prTitle: 'PR',
@@ -173,9 +170,9 @@ describe('CommentService', () => {
       });
 
       expect(result).toContain(
-        '<summary><strong>Achados gerais</strong> <sub>— não afeta a nota</sub></summary>',
+        '<summary><strong>Sugestões gerais</strong> <sub>· fora das regras do repositório · 1</sub></summary>',
       );
-      expect(result).toContain('<summary><code>src/pedido.php</code> — Robustez</summary>');
+      expect(result).toContain('**`src/pedido.php`** — Robustez');
     });
   });
 
