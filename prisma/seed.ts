@@ -9,7 +9,13 @@ const DEFAULT_RULES = [
     description:
       'A hardcoded secret, token, password, or private key was added directly in source code. ' +
       'Secrets must be read from environment variables or a secrets manager. ' +
-      'Bad: `const apiKey = "sk-abc123"`. Good: `const apiKey = process.env.API_KEY`.',
+      'Do not flag placeholder or example values in `.env.example`/`.env.dev`-style template files, ' +
+      'sample configs, or docs (e.g. `your-db-password`, `changeme`, `xxx`, `<INSERT_KEY_HERE>`) — ' +
+      'those are documentation of which variables to set, not exposed secrets. ' +
+      'Only flag a value that looks like a real, working credential: a plausible token/API key format, ' +
+      'a private key body, or a password that is not an obvious placeholder. ' +
+      'Bad: `const apiKey = "sk-live-4f9a1c8b2e"`. Good: `const apiKey = process.env.API_KEY`. ' +
+      'Not a violation: `DB_PASSWORD=your-db-password` in an example env file.',
     criticality: Criticality.high,
     isDefault: true,
   },
