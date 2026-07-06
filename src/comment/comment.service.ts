@@ -47,7 +47,7 @@ export class CommentService {
       this.badge('Média', String(mediumCount), mediumCount > 0 ? 'd4a72c' : GRAY),
       this.badge('Baixa', String(lowCount), lowCount > 0 ? '388bfd' : GRAY),
       this.badge('Dívida', String(knownDebtIssues.length), knownDebtIssues.length > 0 ? 'db6d28' : GRAY),
-    ].join('');
+    ].join(' ');
 
     const sections: string[] = [];
 
