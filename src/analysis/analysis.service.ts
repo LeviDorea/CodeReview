@@ -299,17 +299,46 @@ export class AnalysisService {
     const verified: ReviewIssue[] = [];
     for (const issue of issues) {
       const content = await getContent(issue.file);
-      if (content === null || snippetExistsInContent(issue.snippet, content)) {
-        verified.push(issue);
+      if (content !== null && !snippetExistsInContent(issue.snippet, content)) {
+        this.logger.log(
+          `Dropping stale issue for rule "${issue.rule}" in ${issue.file}: snippet no longer present at ${snapshot.headSha}`,
+        );
         continue;
       }
 
-      this.logger.log(
-        `Dropping stale issue for rule "${issue.rule}" in ${issue.file}: snippet no longer present at ${snapshot.headSha}`,
-      );
+      if (!(await this.evidenceCitationHolds(issue, getContent))) {
+        this.logger.log(
+          `Dropping issue for rule "${issue.rule}" in ${issue.file}: cited evidence not found in ${issue.evidence?.file}`,
+        );
+        continue;
+      }
+
+      verified.push(issue);
     }
 
     return verified;
+  }
+
+  /**
+   * Cross-file claims ("this already exists elsewhere") must come with a
+   * citation the pipeline can check. A missing citation is allowed — only
+   * rules instructed to cite produce one — but a citation that does not
+   * match the cited file at head is a fabricated claim and the issue drops.
+   */
+  private async evidenceCitationHolds(
+    issue: ReviewIssue,
+    getContent: (file: string) => Promise<string | null>,
+  ): Promise<boolean> {
+    if (!issue.evidence?.file || !issue.evidence.quote) {
+      return true;
+    }
+
+    const citedContent = await getContent(issue.evidence.file);
+    if (citedContent === null) {
+      return true;
+    }
+
+    return snippetExistsInContent(issue.evidence.quote, citedContent);
   }
 
   /**
@@ -720,6 +749,9 @@ export class AnalysisService {
         reason: issue.reason,
         criticality: issue.criticality,
         rule: issue.rule,
+        ...(issue.evidence !== undefined
+          ? { evidence: { file: issue.evidence.file, quote: issue.evidence.quote } }
+          : {}),
         ...(issue.issueKey !== undefined ? { issueKey: issue.issueKey } : {}),
         ...(issue.baselineStatus !== undefined
           ? { baselineStatus: issue.baselineStatus }

@@ -24,6 +24,21 @@ const IssueSchema = z.object({
     ),
   criticality: z.enum(['low', 'medium', 'high']),
   rule: z.string(),
+  evidence: z
+    .object({
+      file: z.string().describe('Path of the file that contains the cited code.'),
+      quote: z
+        .string()
+        .describe(
+          'Literal code excerpt copied verbatim from the diff or the shared context.',
+        ),
+    })
+    .optional()
+    .describe(
+      'Required whenever the violation claims something already exists elsewhere ' +
+        '(a duplicate query, an existing constant/method to reuse). Cite the file and ' +
+        'the literal code you can see. If you cannot cite it, do not report the issue.',
+    ),
 });
 
 const LlmOutputSchema = z.object({
@@ -716,6 +731,7 @@ Return only the issueKey values that are still present.`;
 - Shared/imported files are read-only context. Never create an issue targeting them.
 - If the diff is clean relative to the rules, return an empty issues array.
 - \`description\` and \`reason\` must say different things. \`description\` states the problem in general terms. \`reason\` must explain, referencing the actual code in \`snippet\`, why this specific occurrence violates the rule. Never set \`reason\` to just the rule name or a copy of \`description\`.
+- When a violation claims that something already exists elsewhere (a duplicate query, an existing constant or method that should be reused), you MUST fill \`evidence\` with the file path and a literal quote of that existing code, copied from the diff or the shared context. If you cannot see and quote the existing code, do not report the issue.
 
 ## Pull Request
 Title: ${prTitle}
@@ -746,6 +762,7 @@ Report only violations. If no rule is violated, return { "issues": [] }.`;
 - Shared/imported files are read-only context. Never create an issue targeting them.
 - If the PR is compliant with the listed rules, return an empty issues array.
 - \`description\` and \`reason\` must say different things. \`description\` states the problem in general terms. \`reason\` must explain why this PR violates the rule, citing the actual changed snippet and the missing or inconsistent companion evidence elsewhere in the PR.
+- When a violation claims that something already exists elsewhere (a duplicate query, an existing constant or method that should be reused), you MUST fill \`evidence\` with the file path and a literal quote of that existing code, copied from the diff or the shared context. If you cannot see and quote the existing code, do not report the issue.
 
 ## Pull Request
 Title: ${prTitle}

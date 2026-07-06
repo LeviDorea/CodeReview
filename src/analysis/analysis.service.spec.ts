@@ -633,6 +633,110 @@ Some repository conventions live here.
       );
     });
 
+    it('should keep issues whose evidence citation exists in the cited file', async () => {
+      mockPrisma.analysis.findUnique.mockResolvedValue(null);
+      mockGithub.getCompareFiles.mockResolvedValue([
+        {
+          filename: 'php/app/Controller/PedidosController.php',
+          patch: "@@ -1 +1 @@\n+$this->Pedido->find('all', ['conditions' => ['status' => 1]]);",
+          status: 'modified',
+        },
+      ]);
+      mockGithub.getFileContent.mockImplementation((_o: string, _r: string, path: string) => {
+        const contents: Record<string, string> = {
+          'php/app/Controller/PedidosController.php':
+            "$this->Pedido->find('all', ['conditions' => ['status' => 1]]);",
+          'php/app/Model/Pedido.php':
+            'public function findActive() { return $this->find(\'all\', [\'conditions\' => [\'status\' => 1]]); }',
+        };
+        return Promise.resolve(contents[path]);
+      });
+      mockRules.getActiveRulesForRepo.mockResolvedValue(EMPTY_ACTIVE_RULES);
+      mockLlm.analyze.mockResolvedValue([
+        {
+          file: 'php/app/Controller/PedidosController.php',
+          snippet: "$this->Pedido->find('all', ['conditions' => ['status' => 1]]);",
+          description: 'Query duplicates an existing model method.',
+          reason: 'Pedido::findActive already runs this exact lookup.',
+          criticality: 'medium',
+          rule: 'Duplicated Database Query',
+          evidence: {
+            file: 'php/app/Model/Pedido.php',
+            quote: 'public function findActive()',
+          },
+        },
+      ]);
+      mockScoring.calculate.mockReturnValue(96);
+      mockPrisma.analysis.create.mockResolvedValue({ id: 'analysis-evidence-ok', score: 96 });
+
+      const svc = makeService();
+      await svc.runPipeline(EVENT);
+
+      expect(mockPrisma.analysis.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            issues: [
+              expect.objectContaining({
+                rule: 'Duplicated Database Query',
+                evidence: {
+                  file: 'php/app/Model/Pedido.php',
+                  quote: 'public function findActive()',
+                },
+              }),
+            ],
+          }),
+        }),
+      );
+    });
+
+    it('should drop issues whose evidence citation is not found in the cited file', async () => {
+      mockPrisma.analysis.findUnique.mockResolvedValue(null);
+      mockGithub.getCompareFiles.mockResolvedValue([
+        {
+          filename: 'php/app/Controller/PedidosController.php',
+          patch: "@@ -1 +1 @@\n+$this->Pedido->find('all', ['conditions' => ['status' => 1]]);",
+          status: 'modified',
+        },
+      ]);
+      mockGithub.getFileContent.mockImplementation((_o: string, _r: string, path: string) => {
+        const contents: Record<string, string> = {
+          'php/app/Controller/PedidosController.php':
+            "$this->Pedido->find('all', ['conditions' => ['status' => 1]]);",
+          'php/app/Model/Pedido.php': 'public function beforeSave($options = []) { return true; }',
+        };
+        return Promise.resolve(contents[path]);
+      });
+      mockRules.getActiveRulesForRepo.mockResolvedValue(EMPTY_ACTIVE_RULES);
+      mockLlm.analyze.mockResolvedValue([
+        {
+          file: 'php/app/Controller/PedidosController.php',
+          snippet: "$this->Pedido->find('all', ['conditions' => ['status' => 1]]);",
+          description: 'Query duplicates an existing model method.',
+          reason: 'Pedido::findActive already runs this exact lookup.',
+          criticality: 'medium',
+          rule: 'Duplicated Database Query',
+          evidence: {
+            file: 'php/app/Model/Pedido.php',
+            quote: 'public function findActive()',
+          },
+        },
+      ]);
+      mockScoring.calculate.mockReturnValue(100);
+      mockPrisma.analysis.create.mockResolvedValue({ id: 'analysis-evidence-bad', score: 100 });
+
+      const svc = makeService();
+      await svc.runPipeline(EVENT);
+
+      expect(mockScoring.calculate).toHaveBeenCalledWith([], { high: 10, medium: 4, low: 1 });
+      expect(mockPrisma.analysis.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            issues: [],
+          }),
+        }),
+      );
+    });
+
     it('should use default scoring weights when no config exists', async () => {
       mockPrisma.analysis.findUnique.mockResolvedValue(null);
       mockPrisma.scoringConfig.findFirst.mockResolvedValue(null);
