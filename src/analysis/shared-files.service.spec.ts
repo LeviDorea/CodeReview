@@ -122,5 +122,69 @@ describe('SharedFilesService', () => {
       expect(result).toContain('export const helper = true;');
       expect(mockGithub.getFileContent).toHaveBeenCalledTimes(1);
     });
+
+    it('should infer CakePHP context files by convention for PHP changes', async () => {
+      mockGithub.getFileContent.mockImplementation(
+        (_owner: string, _repo: string, path: string) => {
+          const contents: Record<string, string> = {
+            'php/app/Controller/PedidosController.php': `
+              App::uses('AppController', 'Controller');
+              class PedidosController extends AppController {
+                public $uses = array('Pedido');
+
+                public function warRoom() {
+                  return $this->Pedido->buildWarRoomSnapshot();
+                }
+              }
+            `,
+            'php/app/Controller/AppController.php': 'class AppController extends Controller {}',
+            'php/app/Model/Pedido.php': 'class Pedido extends AppModel {}',
+            'php/app/Test/Case/Controller/PedidosControllerTest.php':
+              'class PedidosControllerTest extends ControllerTestCase {}',
+          };
+
+          return Promise.resolve(contents[path] ?? '');
+        },
+      );
+
+      const svc = makeService();
+      const files = [
+        {
+          filename: 'php/app/Controller/PedidosController.php',
+          patch: '@@ -1 +1 @@\n+$this->Pedido->buildWarRoomSnapshot();',
+        },
+      ];
+
+      const result = await svc.fetchSharedFilesContext('org', 'repo', 1, files, 'sha123');
+
+      expect(result).toContain('// File: php/app/Controller/AppController.php');
+      expect(result).toContain('// File: php/app/Model/Pedido.php');
+      expect(result).toContain(
+        '// File: php/app/Test/Case/Controller/PedidosControllerTest.php',
+      );
+    });
+
+    it('should include explicit rule evidence files as read-only context', async () => {
+      mockGithub.getFileContent.mockResolvedValue('# Repo conventions');
+      const svc = makeService();
+
+      const result = await svc.fetchSharedFilesContext(
+        'org',
+        'repo',
+        1,
+        [],
+        'sha123',
+        ['AGENTS.md'],
+      );
+
+      expect(mockGithub.getFileContent).toHaveBeenCalledWith(
+        'org',
+        'repo',
+        'AGENTS.md',
+        1,
+        'sha123',
+      );
+      expect(result).toContain('// File: AGENTS.md');
+    });
   });
 });
